@@ -16,6 +16,7 @@ import {
   updateOrderStatusInSheet as directUpdateOrderStatusInSheet,
   updateDishInSheet as directUpdateDishInSheet,
   fetchSheetNames as directFetchSheetNames,
+  postOrderToAppsScript,
 } from './sheets_api';
 
 export { DEFAULT_DISHES };
@@ -103,7 +104,10 @@ export async function fetchDishesFromSheet(accessToken: string, sheet2Name: stri
 }
 
 export async function createOrderInSheet(accessToken: string, sheet1Name: string, order: Order): Promise<void> {
-  // 1. Always persist in browser localStorage so the order is never lost
+  // 1. Send order directly to Google Apps Script Web App
+  postOrderToAppsScript(order).catch(e => console.warn('Direct Apps Script order post failed:', e));
+
+  // 2. Always persist in browser localStorage so the order is never lost
   try {
     const existingStr = localStorage.getItem('local_orders');
     const existingOrders: Order[] = existingStr ? JSON.parse(existingStr) : [];

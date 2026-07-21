@@ -133,21 +133,19 @@ app.post('/api/admin/init', async (req, res) => {
   }
 });
 
-// 2. Fetch dishes (Public)
+// 2. Fetch dishes (Public - always fetches live from Google Sheets)
 app.get('/api/dishes', async (req, res) => {
   let dishes = readJsonFile<Dish[]>(DISHES_FILE, sheetsApi.DEFAULT_DISHES);
 
-  if (cachedAdminToken) {
-    try {
-      // Refresh cache from Sheets
-      const freshDishes = await sheetsApi.fetchDishesFromSheet(cachedAdminToken, 'Multimedia');
-      if (freshDishes && freshDishes.length > 0) {
-        dishes = freshDishes;
-        writeJsonFile<Dish[]>(DISHES_FILE, dishes);
-      }
-    } catch (e) {
-      console.warn('Google Sheets unreachable for dishes fetch, serving cached dishes:', e);
+  try {
+    const tokenToUse = cachedAdminToken || '';
+    const freshDishes = await sheetsApi.fetchDishesFromSheet(tokenToUse, 'Multimedia');
+    if (freshDishes && freshDishes.length > 0) {
+      dishes = freshDishes;
+      writeJsonFile<Dish[]>(DISHES_FILE, dishes);
     }
+  } catch (e) {
+    console.warn('Google Sheets unreachable for dishes fetch, serving cached dishes:', e);
   }
 
   res.json({ dishes });
