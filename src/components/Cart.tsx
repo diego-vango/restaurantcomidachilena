@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { CartItem, Dish, Order } from '../types';
 import { formatCLP } from './DishCard';
-import { MapPin, ShoppingBag, Trash2, User, Phone, Mail, Loader2, ArrowRight } from 'lucide-react';
+import { MapPin, ShoppingBag, Trash2, User, Phone, Mail, Loader2, ArrowRight, Navigation } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface CartProps {
@@ -19,6 +19,7 @@ interface CartProps {
     phone: string;
     address: string;
   }) => Promise<void>;
+  onAddressChange?: (address: string) => void;
   isSubmitting: boolean;
   routeDistance: string;
   routeDuration: string;
@@ -30,6 +31,7 @@ export default function Cart({
   onUpdateQuantity,
   onRemoveItem,
   onSubmitOrder,
+  onAddressChange,
   isSubmitting,
   routeDistance,
   routeDuration,
@@ -39,7 +41,58 @@ export default function Cart({
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
   const [address, setAddress] = useState('');
+  const [isLocating, setIsLocating] = useState(false);
   const [formError, setFormError] = useState('');
+
+  const handleDetectLocation = () => {
+    if (!navigator.geolocation) {
+      setFormError('Tu navegador no soporta geolocalización por GPS.');
+      return;
+    }
+    setIsLocating(true);
+    setFormError('');
+
+    navigator.geolocation.getCurrentPosition(
+      async (position) => {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        let formattedAddress = `Ubicación GPS (${lat.toFixed(4)}, ${lng.toFixed(4)})`;
+
+        try {
+          const resp = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?lat=${lat}&lon=${lng}&format=json`
+          );
+          if (resp.ok) {
+            const data = await resp.json();
+            if (data && data.address) {
+              const road = data.address.road || data.address.pedestrian || data.address.suburb || '';
+              const houseNumber = data.address.house_number || '';
+              const city = data.address.city || data.address.town || data.address.village || data.address.county || 'Rancagua';
+              if (road) {
+                formattedAddress = `${road} ${houseNumber}`.trim() + `, ${city}`;
+              } else if (data.display_name) {
+                formattedAddress = data.display_name.split(',').slice(0, 3).join(',');
+              }
+            }
+          }
+        } catch (e) {
+          console.log('Reverse geocoding fallback:', e);
+        }
+
+        setAddress(formattedAddress);
+        if (onAddressChange) {
+          onAddressChange(formattedAddress);
+        }
+        setIsLocating(false);
+      },
+      (err) => {
+        console.error('Geolocation error:', err);
+        setIsLocating(false);
+        setFormError('No se pudo obtener tu ubicación automáticamente. Por favor escribe tu dirección manualmente.');
+      },
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  };
 
   const parseDistanceKm = (distStr: string): number => {
     if (!distStr) return 0;
@@ -186,16 +239,39 @@ export default function Cart({
               </div>
             </div>
 
-            <div className="relative">
-              <MapPin className="absolute left-3.5 top-3 w-4.5 h-4.5 text-slate-400" />
-              <input
-                type="text"
-                placeholder="Dirección (ej. Av. Vitacura 5100, Las Condes)"
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                disabled={!isKitchenOpen}
-                className="w-full bg-slate-50 border border-slate-200/80 rounded-full py-2.5 pl-10 pr-4 text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 focus:bg-white transition-all disabled:opacity-60"
-              />
+            <div className="space-y-1">
+              <div className="relative">
+                <MapPin className="absolute left-3.5 top-3 w-4.5 h-4.5 text-slate-400" />
+                <input
+                  type="text"
+                  placeholder="Dirección (ej. Av. España 450, Rancagua)"
+                  value={address}
+                  onChange={(e) => {
+                    const newAddr = e.target.value;
+                    setAddress(newAddr);
+                    if (onAddressChange) onAddressChange(newAddr);
+                  }}
+                  disabled={!isKitchenOpen}
+                  className="w-full bg-slate-50 border border-slate-200/80 rounded-full py-2.5 pl-10 pr-24 text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 focus:bg-white transition-all disabled:opacity-60"
+                />
+                <button
+                  type="button"
+                  onClick={handleDetectLocation}
+                  disabled={isLocating || !isKitchenOpen}
+                  className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11px] rounded-full flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                  title="Detectar mi ubicación por GPS"
+                >
+                  {isLocating ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Navigation className="w-3.5 h-3.5 fill-red-600" />
+                  )}
+                  <span className="hidden sm:inline">{isLocating ? 'Buscando...' : 'Mi GPS'}</span>
+                </button>
+              </div>
+              <p className="text-[10px] text-slate-400 px-3 flex items-center gap-1">
+                💡 Ingresa tu calle y número o usa <strong>Mi GPS</strong> para calcular tu envío.
+              </p>
             </div>
 
             {/* Route calculations info if available */}

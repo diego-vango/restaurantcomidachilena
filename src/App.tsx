@@ -40,7 +40,8 @@ import {
   X,
   Compass,
   MapPin,
-  CheckCircle2
+  CheckCircle2,
+  Plus
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
@@ -617,16 +618,45 @@ export default function App() {
               </div>
 
               {/* Special highlight box */}
-              <div className="p-5 bg-red-600 rounded-3xl text-white shadow-lg shadow-red-100/55 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                <div>
-                  <p className="text-[9px] uppercase tracking-widest opacity-80 font-bold mb-1">Oferta del Día</p>
-                  <h4 className="text-base font-bold">Mote con Huesillo XL</h4>
-                  <p className="text-xs opacity-90 mt-0.5">Refrescante postre típico para acompañar tu orden tradicional.</p>
-                </div>
-                <span className="text-xs bg-white/20 px-3 py-1.5 rounded-full font-bold">
-                  Sabor Criollo Original
-                </span>
-              </div>
+              {(() => {
+                const offerDish: Dish = dishes.find(
+                  (d) => d.id === 'mote-con-huesillo' || d.name.toLowerCase().includes('mote')
+                ) || {
+                  id: 'mote-con-huesillo',
+                  name: 'Mote con Huesillo XL',
+                  category: 'Postres',
+                  price: 3200,
+                  description: 'Refrescante postre típico para acompañar tu orden tradicional.',
+                  ingredients: ['Huesillos (duraznos deshidratados)', 'Mote de trigo', 'Chancaca o azúcar'],
+                  image: 'https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=600&auto=format&fit=crop&q=80',
+                  available: true
+                };
+
+                return (
+                  <div className="p-5 bg-gradient-to-r from-red-600 to-red-700 rounded-3xl text-white shadow-lg shadow-red-100/55 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+                    <div>
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="text-[9px] uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full font-bold">
+                          Oferta del Día
+                        </span>
+                        <span className="text-xs font-extrabold text-amber-300 bg-amber-950/30 px-2 py-0.5 rounded-full border border-amber-300/30">
+                          {formatCLP(offerDish.price)}
+                        </span>
+                      </div>
+                      <h4 className="text-base font-bold">{offerDish.name}</h4>
+                      <p className="text-xs opacity-90 mt-0.5">{offerDish.description}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => handleAddToCart(offerDish)}
+                      className="px-4 py-2.5 bg-white hover:bg-amber-50 active:scale-95 text-red-600 font-extrabold text-xs rounded-full shadow-md transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
+                    >
+                      <Plus className="w-4 h-4 text-red-600 stroke-[3]" />
+                      <span>Añadir ({formatCLP(offerDish.price)})</span>
+                    </button>
+                  </div>
+                );
+              })()}
             </div>
 
             {/* Right Column: Tracking / Checkout */}
@@ -729,7 +759,7 @@ export default function App() {
                     <Compass className="w-3.5 h-3.5 text-red-600 animate-spin-slow" />
                     Cobertura de Entrega
                   </span>
-                  <span>Radio de 5km • Rancagua</span>
+                  <span>Rancagua</span>
                 </div>
 
                 <MapContainer
@@ -749,6 +779,7 @@ export default function App() {
                 onUpdateQuantity={handleUpdateQuantity}
                 onRemoveItem={handleRemoveItem}
                 onSubmitOrder={handleSubmitOrder}
+                onAddressChange={(addr) => setDeliveryAddress(addr)}
                 isSubmitting={isPlacingOrder}
                 routeDistance={routeDistance}
                 routeDuration={routeDuration}
@@ -762,9 +793,6 @@ export default function App() {
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-6 px-4 text-center text-xs text-slate-400 font-medium">
         <div>El Copihue de Oro © 2026 • Rancagua, Región de O'Higgins, Chile</div>
-        <div className="mt-1 text-[10px] text-slate-300">
-          Sincronizado de manera nativa con Google Sheets ID: {SPREADSHEET_ID.slice(0, 10)}...
-        </div>
       </footer>
     </div>
   );
