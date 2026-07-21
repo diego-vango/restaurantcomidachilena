@@ -155,29 +155,37 @@ app.get('/api/dishes', async (req, res) => {
 
 // 3. Create/Submit order (Public)
 app.post('/api/orders', async (req, res) => {
-  const { order } = req.body;
-  if (!order || !order.id) {
-    return res.status(400).json({ error: 'Pedido inválido o incompleto.' });
-  }
-
-  // 1. Save locally in-memory/file first (failsafe)
-  const localOrders = readJsonFile<Order[]>(ORDERS_FILE, []);
-  localOrders.push(order);
-  writeJsonFile<Order[]>(ORDERS_FILE, localOrders);
-
-  // 2. Try to append to Google Sheets immediately if we have a token cached
-  let synced = false;
-  if (cachedAdminToken) {
-    try {
-      await sheetsApi.createOrderInSheet(cachedAdminToken, 'Ordenes', order);
-      synced = true;
-      console.log(`Order ${order.id} pushed successfully to Google Sheets.`);
-    } catch (e) {
-      console.error(`Failed to push order ${order.id} to Sheets immediately (will sync later):`, e);
+  try {
+    const { order, accessToken, sheet1Name } = req.body || {};
+    if (!order || !order.id) {
+      return res.status(400).json({ error: 'Pedido inválido o incompleto.' });
     }
-  }
 
-  res.json({ success: true, order, synced });
+    // 1. Save locally in-memory/file first (failsafe)
+    const localOrders = readJsonFile<Order[]>(ORDERS_FILE, []);
+    localOrders.push(order);
+    writeJsonFile<Order[]>(ORDERS_FILE, localOrders);
+
+    // 2. Try to append to Google Sheets immediately if we have a token
+    let synced = false;
+    const tokenToUse = accessToken || cachedAdminToken;
+    const sheetToUse = sheet1Name || 'Ordenes';
+
+    if (tokenToUse) {
+      try {
+        await sheetsApi.createOrderInSheet(tokenToUse, sheetToUse, order);
+        synced = true;
+        console.log(`Order ${order.id} pushed successfully to Google Sheets.`);
+      } catch (e: any) {
+        console.error(`Failed to push order ${order.id} to Sheets immediately (will sync later):`, e?.message || e);
+      }
+    }
+
+    return res.json({ success: true, order, synced });
+  } catch (err: any) {
+    console.error('Error in /api/orders endpoint:', err);
+    return res.status(500).json({ error: err?.message || 'Error interno al procesar el pedido.' });
+  }
 });
 
 // 4. Fetch orders (Public / Admin)

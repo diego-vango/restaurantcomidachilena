@@ -26,7 +26,8 @@ async function apiRequest(endpoint: string, method: string, body?: any) {
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error || `Error: ${response.statusText}`);
+    const errorMsg = errorData.error || (response.statusText ? `Error: ${response.statusText}` : `Error de servidor (${response.status})`);
+    throw new Error(errorMsg);
   }
 
   return response.json();
@@ -77,10 +78,10 @@ export async function fetchDishesFromSheet(accessToken: string, sheet2Name: stri
 export async function createOrderInSheet(accessToken: string, sheet1Name: string, order: Order): Promise<void> {
   try {
     // Call public API to submit order
-    await apiRequest('/orders', 'POST', { order });
-  } catch (error) {
+    await apiRequest('/orders', 'POST', { order, accessToken, sheet1Name });
+  } catch (error: any) {
     console.error('Failed to submit order to backend:', error);
-    throw error;
+    throw new Error(error?.message || 'No se pudo registrar tu orden.');
   }
 }
 

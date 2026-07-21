@@ -376,11 +376,13 @@ export default function App() {
         'success'
       );
 
-      // Force refreshing data immediately
-      await refreshAllSheetsData(activeToken, activeSheetName, sheet2Name || 'Multimedia');
+      // Force refreshing data in background
+      refreshAllSheetsData(activeToken, activeSheetName, sheet2Name || 'Multimedia').catch((e) => {
+        console.warn('Background refresh after order completed:', e);
+      });
     } catch (err: any) {
       console.error('Error placing order:', err);
-      throw new Error(err.message || 'No se pudo registrar tu orden.');
+      throw new Error(err?.message || 'No se pudo registrar tu orden.');
     } finally {
       setIsPlacingOrder(false);
     }
