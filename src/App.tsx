@@ -44,12 +44,43 @@ import {
 } from 'lucide-react';
 import { AnimatePresence, motion } from 'motion/react';
 
+const isKitchenOpen = (): boolean => {
+  try {
+    const formatter = new Intl.DateTimeFormat('es-CL', {
+      timeZone: 'America/Santiago',
+      hour: 'numeric',
+      minute: 'numeric',
+      hour12: false
+    });
+    const formatted = formatter.format(new Date());
+    const [hourStr, minuteStr] = formatted.split(':');
+    const hour = parseInt(hourStr, 10);
+    const minute = parseInt(minuteStr, 10);
+    const totalMinutes = hour * 60 + minute;
+    // 11:00 is 11 * 60 = 660. 20:00 is 20 * 60 = 1200.
+    return totalMinutes >= 660 && totalMinutes < 1200;
+  } catch (e) {
+    const localHour = new Date().getHours();
+    return localHour >= 11 && localHour < 20;
+  }
+};
+
 export default function App() {
   // Auth state
   const [user, setUser] = useState<User | null>(null);
   const [token, setToken] = useState<string | null>(null);
   const [needsAuth, setNeedsAuth] = useState(false);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+
+  // Kitchen schedule state
+  const [isKitchenOpenState, setIsKitchenOpenState] = useState(isKitchenOpen());
+
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setIsKitchenOpenState(isKitchenOpen());
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   // Sheets state
   const [sheet1Name, setSheet1Name] = useState('');
@@ -237,6 +268,14 @@ export default function App() {
 
   // Cart actions
   const handleAddToCart = (dish: Dish) => {
+    if (!isKitchenOpenState) {
+      triggerNotification(
+        'Cocina Cerrada',
+        'Lo sentimos, la cocina está cerrada en este momento (Horario: 11:00 a 20:00 Chile).',
+        'warning'
+      );
+      return;
+    }
     setCart((prev) => {
       const existing = prev.find((item) => item.dish.id === dish.id);
       if (existing) {
@@ -274,6 +313,9 @@ export default function App() {
     phone: string;
     address: string;
   }) => {
+    if (!isKitchenOpenState) {
+      throw new Error('La cocina está cerrada en este momento (Horario: 11:00 a 20:00 Chile).');
+    }
     const activeToken = token || '';
     const activeSheetName = sheet1Name || 'Ordenes';
 
@@ -283,7 +325,26 @@ export default function App() {
       const orderId = 'PED' + Math.random().toString(36).substring(2, 8).toUpperCase();
       const itemsSummary = cart.map(item => `${item.quantity}x ${item.dish.name}`).join(', ');
       const subtotal = cart.reduce((acc, item) => acc + item.dish.price * item.quantity, 0);
-      const totalAmount = subtotal + 2000;
+
+      const parseDistanceKm = (distStr: string): number => {
+        if (!distStr) return 0;
+        const cleanStr = distStr.replace(/[^\d.,]/g, '').replace(',', '.');
+        return parseFloat(cleanStr) || 0;
+      };
+
+      const parsedDistance = parseDistanceKm(routeDistance);
+      const getDeliveryFee = (): number => {
+        if (subtotal === 0) return 0;
+        if (!routeDistance || parsedDistance <= 1) {
+          return 1000;
+        }
+        const extraDistance = parsedDistance - 1;
+        const extraFee = Math.ceil(extraDistance) * 500;
+        return 1000 + extraFee;
+      };
+
+      const deliveryFee = getDeliveryFee();
+      const totalAmount = subtotal + deliveryFee;
 
       const newOrder: Order = {
         id: orderId,
@@ -401,10 +462,17 @@ export default function App() {
               El Copihue de Oro
               <Sparkles className="w-4 h-4 text-amber-500 fill-amber-500" />
             </h1>
-            <p className="text-[10px] font-bold text-green-600 flex items-center gap-1">
-              <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
-              Cocina Activa • Pedidos en Línea
-            </p>
+            {isKitchenOpenState ? (
+              <p className="text-[10px] font-bold text-green-600 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse"></span>
+                Cocina Activa • Pedidos en Línea
+              </p>
+            ) : (
+              <p className="text-[10px] font-bold text-red-600 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span>
+                Cocina Cerrada
+              </p>
+            )}
           </div>
         </div>
 
@@ -661,7 +729,7 @@ export default function App() {
                     <Compass className="w-3.5 h-3.5 text-red-600 animate-spin-slow" />
                     Cobertura de Entrega
                   </span>
-                  <span>Santiago Centro / Oriente</span>
+                  <span>Radio de 5km • Rancagua</span>
                 </div>
 
                 <MapContainer
@@ -684,6 +752,7 @@ export default function App() {
                 isSubmitting={isPlacingOrder}
                 routeDistance={routeDistance}
                 routeDuration={routeDuration}
+                isKitchenOpen={isKitchenOpenState}
               />
             </div>
           </div>
@@ -692,7 +761,7 @@ export default function App() {
 
       {/* Footer */}
       <footer className="bg-white border-t border-slate-200 py-6 px-4 text-center text-xs text-slate-400 font-medium">
-        <div>El Copihue de Oro © 2026 • Providencia, Santiago, Chile</div>
+        <div>El Copihue de Oro © 2026 • Rancagua, Región de O'Higgins, Chile</div>
         <div className="mt-1 text-[10px] text-slate-300">
           Sincronizado de manera nativa con Google Sheets ID: {SPREADSHEET_ID.slice(0, 10)}...
         </div>

@@ -22,6 +22,7 @@ interface CartProps {
   isSubmitting: boolean;
   routeDistance: string;
   routeDuration: string;
+  isKitchenOpen?: boolean;
 }
 
 export default function Cart({
@@ -31,7 +32,8 @@ export default function Cart({
   onSubmitOrder,
   isSubmitting,
   routeDistance,
-  routeDuration
+  routeDuration,
+  isKitchenOpen = true
 }: CartProps) {
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -39,13 +41,36 @@ export default function Cart({
   const [address, setAddress] = useState('');
   const [formError, setFormError] = useState('');
 
+  const parseDistanceKm = (distStr: string): number => {
+    if (!distStr) return 0;
+    const cleanStr = distStr.replace(/[^\d.,]/g, '').replace(',', '.');
+    return parseFloat(cleanStr) || 0;
+  };
+
   const subtotal = cartItems.reduce((acc, item) => acc + item.dish.price * item.quantity, 0);
-  const deliveryFee = subtotal > 0 ? 2000 : 0;
+
+  const getDeliveryFee = (): number => {
+    if (subtotal === 0) return 0;
+    const parsedDistance = parseDistanceKm(routeDistance);
+    if (!routeDistance || parsedDistance <= 1) {
+      return 1000;
+    }
+    const extraDistance = parsedDistance - 1;
+    const extraFee = Math.ceil(extraDistance) * 500;
+    return 1000 + extraFee;
+  };
+
+  const deliveryFee = getDeliveryFee();
   const total = subtotal + deliveryFee;
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setFormError('');
+
+    if (!isKitchenOpen) {
+      setFormError('Lo sentimos, la cocina está cerrada en este momento (Horario: 11:00 a 20:00 Chile).');
+      return;
+    }
 
     if (cartItems.length === 0) {
       setFormError('El carro de compras está vacío.');
@@ -130,7 +155,8 @@ export default function Cart({
                 placeholder="Nombre Completo"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200/80 rounded-full py-2.5 pl-10 pr-4 text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 focus:bg-white transition-all"
+                disabled={!isKitchenOpen}
+                className="w-full bg-slate-50 border border-slate-200/80 rounded-full py-2.5 pl-10 pr-4 text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 focus:bg-white transition-all disabled:opacity-60"
               />
             </div>
 
@@ -142,7 +168,8 @@ export default function Cart({
                   placeholder="Email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200/80 rounded-full py-2.5 pl-10 pr-4 text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 focus:bg-white transition-all"
+                  disabled={!isKitchenOpen}
+                  className="w-full bg-slate-50 border border-slate-200/80 rounded-full py-2.5 pl-10 pr-4 text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 focus:bg-white transition-all disabled:opacity-60"
                 />
               </div>
 
@@ -153,7 +180,8 @@ export default function Cart({
                   placeholder="Teléfono"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200/80 rounded-full py-2.5 pl-10 pr-4 text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 focus:bg-white transition-all"
+                  disabled={!isKitchenOpen}
+                  className="w-full bg-slate-50 border border-slate-200/80 rounded-full py-2.5 pl-10 pr-4 text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 focus:bg-white transition-all disabled:opacity-60"
                 />
               </div>
             </div>
@@ -165,7 +193,8 @@ export default function Cart({
                 placeholder="Dirección (ej. Av. Vitacura 5100, Las Condes)"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200/80 rounded-full py-2.5 pl-10 pr-4 text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 focus:bg-white transition-all"
+                disabled={!isKitchenOpen}
+                className="w-full bg-slate-50 border border-slate-200/80 rounded-full py-2.5 pl-10 pr-4 text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 focus:bg-white transition-all disabled:opacity-60"
               />
             </div>
 
@@ -198,19 +227,29 @@ export default function Cart({
               </div>
             </div>
 
+            {!isKitchenOpen && (
+              <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs font-semibold rounded-2xl text-center">
+                🚫 Cocina Cerrada en este momento.<br/>El horario de pedidos es de 11:00 a 20:00 (Hora de Chile).
+              </div>
+            )}
+
             {formError && (
               <p className="text-xs font-semibold text-rose-500 text-center">{formError}</p>
             )}
 
             <button
               type="submit"
-              disabled={isSubmitting}
+              disabled={isSubmitting || !isKitchenOpen}
               className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-200/80 disabled:bg-slate-300 disabled:shadow-none cursor-pointer"
             >
               {isSubmitting ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
                   Enviando Pedido...
+                </>
+              ) : !isKitchenOpen ? (
+                <>
+                  Cocina Cerrada (11:00 a 20:00)
                 </>
               ) : (
                 <>

@@ -7,6 +7,10 @@ import { Dish, Order, OrderStatus } from '../types';
 
 export const SPREADSHEET_ID = '1FRWWdb28nT8NHV0Wt1mfMiUGcMN2RValX5D2HBQX8mg';
 
+import { DEFAULT_DISHES } from './sheets_api';
+
+export { DEFAULT_DISHES };
+
 // Helper to make API requests to the Express server
 async function apiRequest(endpoint: string, method: string, body?: any) {
   const url = `/api${endpoint}`;
@@ -29,35 +33,66 @@ async function apiRequest(endpoint: string, method: string, body?: any) {
 }
 
 export async function fetchSheetNames(accessToken: string): Promise<string[]> {
-  // Talk to our backend which handles the token caching
-  const data = await apiRequest('/admin/sheet-names', 'POST', { accessToken });
-  return data.sheetNames || [];
+  try {
+    // Talk to our backend which handles the token caching
+    const data = await apiRequest('/admin/sheet-names', 'POST', { accessToken });
+    return data.sheetNames || [];
+  } catch (error) {
+    console.error('Error fetching sheet names from backend:', error);
+    return [];
+  }
 }
 
 export async function initializeSpreadsheet(accessToken: string): Promise<{ sheet1Name: string; sheet2Name: string }> {
-  // Sends token to backend to cache and initialize the spreadsheet
-  const data = await apiRequest('/admin/init', 'POST', { accessToken });
-  return {
-    sheet1Name: data.sheet1Name || 'Hoja 1',
-    sheet2Name: data.sheet2Name || 'Hoja2'
-  };
+  try {
+    // Sends token to backend to cache and initialize the spreadsheet
+    const data = await apiRequest('/admin/init', 'POST', { accessToken });
+    return {
+      sheet1Name: data.sheet1Name || 'Ordenes',
+      sheet2Name: data.sheet2Name || 'Multimedia'
+    };
+  } catch (error) {
+    console.error('Error initializing spreadsheet from backend:', error);
+    return {
+      sheet1Name: 'Ordenes',
+      sheet2Name: 'Multimedia'
+    };
+  }
 }
 
 export async function fetchDishesFromSheet(accessToken: string, sheet2Name: string): Promise<Dish[]> {
-  // Call public API to get dishes (the backend will use the cached admin token if available)
-  const data = await apiRequest('/dishes', 'GET');
-  return data.dishes || [];
+  try {
+    // Call public API to get dishes (the backend will use the cached admin token if available)
+    const data = await apiRequest('/dishes', 'GET');
+    if (data && Array.isArray(data.dishes) && data.dishes.length > 0) {
+      return data.dishes;
+    }
+    return DEFAULT_DISHES;
+  } catch (error) {
+    console.error('Error in client fetchDishesFromSheet, returning local default menu:', error);
+    return DEFAULT_DISHES;
+  }
 }
 
 export async function createOrderInSheet(accessToken: string, sheet1Name: string, order: Order): Promise<void> {
-  // Call public API to submit order
-  await apiRequest('/orders', 'POST', { order });
+  try {
+    // Call public API to submit order
+    await apiRequest('/orders', 'POST', { order });
+  } catch (error) {
+    console.error('Failed to submit order to backend:', error);
+    throw error;
+  }
 }
 
 export async function fetchOrdersFromSheet(accessToken: string, sheet1Name: string): Promise<Order[]> {
-  // Get recent orders from the server
-  const data = await apiRequest('/orders', 'GET');
-  return data.orders || [];
+  try {
+    // Get recent orders from the server
+    const data = await apiRequest('/orders', 'GET');
+    return data.orders || [];
+  } catch (error) {
+    console.error('Error fetching orders from server:', error);
+    return [];
+  }
 }
 
 export async function updateOrderStatusInSheet(

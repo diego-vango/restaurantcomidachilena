@@ -31,14 +31,16 @@ export default function MapContainer({
     if (customerAddress && onRouteCalculated) {
       // Generate a deterministic or randomized reasonable delivery range
       const baseDistance = 1.5 + (customerAddress.length % 5) * 0.8; // e.g. 1.5km to 5.5km
-      const baseDuration = Math.round(baseDistance * 4 + 5); // e.g. 11 mins to 27 mins
+      const travelTimeMinutes = Math.round(baseDistance * 4 + 5); // transit travel time, e.g. 11 mins to 27 mins
+      const totalDeliveryTimeMinutes = 30 + travelTimeMinutes; // 30 mins prep + travel time
       
       const distStr = `${baseDistance.toFixed(1)} km`;
-      const durStr = `${baseDuration} min`;
+      const travelDurStr = `${travelTimeMinutes} min`;
+      const totalDurStr = `${totalDeliveryTimeMinutes} min`;
 
       setEstimatedDistance(distStr);
-      setEstimatedDuration(durStr);
-      onRouteCalculated(distStr, durStr);
+      setEstimatedDuration(totalDurStr); // Total preparation + delivery transit time
+      onRouteCalculated(distStr, travelDurStr); // Pass distance and transit travel duration to Cart
     } else {
       setEstimatedDistance('');
       setEstimatedDuration('');
@@ -49,8 +51,8 @@ export default function MapContainer({
   const wazeUrl = `https://waze.com/ul?ll=${RESTAURANT_COORDS.lat},${RESTAURANT_COORDS.lng}&navigate=yes`;
   
   // High quality OpenStreetMap interactive embed centered at the exact restaurant coordinates
-  // bbox specifies the window around the coordinates
-  const osmEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=-70.695%2C-34.180%2C-70.673%2C-34.166&layer=mapnik&marker=${RESTAURANT_COORDS.lat}%2C${RESTAURANT_COORDS.lng}`;
+  // Adjusted with a bbox covering exactly a 5km radius (10km span) around the restaurant
+  const osmEmbedUrl = `https://www.openstreetmap.org/export/embed.html?bbox=-70.738111%2C-34.218000%2C-70.630111%2C-34.128000&layer=mapnik&marker=${RESTAURANT_COORDS.lat}%2C${RESTAURANT_COORDS.lng}`;
 
   return (
     <div className="flex flex-col gap-3">
