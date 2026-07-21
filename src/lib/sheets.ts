@@ -104,15 +104,14 @@ export async function fetchDishesFromSheet(accessToken: string, sheet2Name: stri
 }
 
 export async function createOrderInSheet(accessToken: string, sheet1Name: string, order: Order): Promise<void> {
-  // 1. Send order directly to Google Apps Script Web App
-  postOrderToAppsScript(order).catch(e => console.warn('Direct Apps Script order post failed:', e));
-
-  // 2. Always persist in browser localStorage so the order is never lost
+  // 1. Always persist in browser localStorage so the order is never lost
   try {
     const existingStr = localStorage.getItem('local_orders');
     const existingOrders: Order[] = existingStr ? JSON.parse(existingStr) : [];
-    existingOrders.push(order);
-    localStorage.setItem('local_orders', JSON.stringify(existingOrders));
+    if (!existingOrders.some(o => o.id === order.id)) {
+      existingOrders.push(order);
+      localStorage.setItem('local_orders', JSON.stringify(existingOrders));
+    }
   } catch (e) {
     console.warn('Could not save order to localStorage:', e);
   }
@@ -120,23 +119,22 @@ export async function createOrderInSheet(accessToken: string, sheet1Name: string
   // 2. Attempt push via backend server endpoint
   let backendSuccess = false;
   try {
-    await apiRequest('/orders', 'POST', { order, accessToken, sheet1Name });
-    backendSuccess = true;
+    const res = await apiRequest('/orders', 'POST', { order, accessToken, sheet1Name });
+    if (res && res.synced) {
+      backendSuccess = true;
+    }
   } catch (error: any) {
-    console.warn('Backend /orders POST failed (static host/405), attempting direct Google Sheets write:', error);
+    console.warn('Backend /orders POST failed, attempting direct client Google Sheets write:', error);
   }
 
-  // 3. Fallback to direct client Google Sheets REST API call if backend didn't handle it
-  if (!backendSuccess && accessToken) {
+  // 3. Fallback to direct client Google Sheets / Apps Script write if backend didn't sync it
+  if (!backendSuccess) {
     try {
       await directCreateOrderInSheet(accessToken, sheet1Name, order);
-      backendSuccess = true;
     } catch (directErr) {
       console.error('Direct Google Sheets append failed:', directErr);
     }
   }
-
-  // If order is stored locally, we successfully complete the checkout flow!
 }
 
 export async function fetchOrdersFromSheet(accessToken: string, sheet1Name: string): Promise<Order[]> {

@@ -73,6 +73,10 @@ export const DEFAULT_DISHES: Dish[] = [
 
 // Helper to make Google Sheets API Requests
 async function sheetsApiRequest(endpoint: string, method: string, accessToken: string, body?: any) {
+  if (!accessToken || !accessToken.trim()) {
+    throw new Error('No access token provided.');
+  }
+
   const url = `https://sheets.googleapis.com/v4/spreadsheets/${SPREADSHEET_ID}${endpoint}`;
   const headers: HeadersInit = {
     'Authorization': `Bearer ${accessToken}`,
@@ -87,7 +91,10 @@ async function sheetsApiRequest(endpoint: string, method: string, accessToken: s
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.error?.message || `Error calling Sheets API: ${response.statusText}`);
+    const errMsg = errorData.error?.message || `Error calling Sheets API: ${response.statusText}`;
+    const err = new Error(errMsg);
+    (err as any).status = response.status;
+    throw err;
   }
 
   return response.json();
@@ -95,17 +102,21 @@ async function sheetsApiRequest(endpoint: string, method: string, accessToken: s
 
 // Fetch spreadsheet metadata to get sheet titles
 export async function fetchSheetNames(accessToken: string): Promise<string[]> {
+  if (!accessToken) return [];
   try {
     const data = await sheetsApiRequest('', 'GET', accessToken);
     return data.sheets?.map((s: any) => s.properties?.title) || [];
-  } catch (error) {
-    console.error('Error fetching sheet metadata:', error);
-    throw error;
+  } catch (error: any) {
+    console.warn('Unable to fetch sheet metadata:', error?.message || error);
+    return [];
   }
 }
 
 // Ensure both Ordenes and Multimedia exist, performing dynamic renames if old names are found
 export async function initializeSpreadsheet(accessToken: string): Promise<{ sheet1Name: string; sheet2Name: string }> {
+  if (!accessToken) {
+    return { sheet1Name: 'Ordenes', sheet2Name: 'Multimedia' };
+  }
   try {
     const data = await sheetsApiRequest('', 'GET', accessToken);
     const sheetsList = data.sheets || [];
@@ -309,13 +320,13 @@ export async function postOrderToAppsScript(order: Order): Promise<boolean> {
       redirect: 'follow'
     });
     if (res.ok || res.status === 302 || res.type === 'opaque') {
-      success = true;
+      return true;
     }
   } catch (e) {
     console.warn('Apps Script POST JSON attempt:', e);
   }
 
-  // 2. Also send form payload as fallback for scripts expecting e.parameter
+  // 2. Only send form payload as fallback if JSON attempt failed
   try {
     const formData = new URLSearchParams();
     formData.append('action', 'createOrder');
@@ -337,12 +348,12 @@ export async function postOrderToAppsScript(order: Order): Promise<boolean> {
       body: formData.toString(),
       mode: 'no-cors'
     });
-    success = true;
+    return true;
   } catch (e) {
     console.warn('Apps Script POST form attempt:', e);
   }
 
-  return success;
+  return false;
 }
 
 // Fetch dishes publicly via Google Sheets GViz endpoint with cache buster
@@ -446,10 +457,15 @@ export async function fetchDishesFromSheet(accessToken: string, sheet2Name: stri
 // Write/Append order to Hoja 1 and Apps Script Web App
 export async function createOrderInSheet(accessToken: string, sheet1Name: string, order: Order): Promise<void> {
   // 1. Send order to user's Google Apps Script Web App
-  postOrderToAppsScript(order).catch(e => console.warn('postOrderToAppsScript error:', e));
+  let appsScriptSuccess = false;
+  try {
+    appsScriptSuccess = await postOrderToAppsScript(order);
+  } catch (e) {
+    console.warn('postOrderToAppsScript error:', e);
+  }
 
-  // 2. If OAuth access token is available, also call Google Sheets REST API directly
-  if (accessToken) {
+  // 2. If Apps Script was NOT successful and OAuth access token is available, fallback to direct Google Sheets REST API
+  if (!appsScriptSuccess && accessToken) {
     try {
       const row = [
         order.id,
@@ -476,6 +492,7 @@ export async function createOrderInSheet(accessToken: string, sheet1Name: string
 
 // Fetch orders from Hoja 1 (for Admin panel and to check status in real-time)
 export async function fetchOrdersFromSheet(accessToken: string, sheet1Name: string): Promise<Order[]> {
+  if (!accessToken) return [];
   try {
     const data = await sheetsApiRequest(`/values/${encodeURIComponent(sheet1Name)}!A2:K1000`, 'GET', accessToken);
     if (!data.values || data.values.length === 0) {
@@ -497,8 +514,8 @@ export async function fetchOrdersFromSheet(accessToken: string, sheet1Name: stri
         routeDuration: row[10] || ''
       };
     }).filter((o: Order) => o.id);
-  } catch (error) {
-    console.error('Error fetching orders:', error);
+  } catch (error: any) {
+    console.warn('Unable to fetch orders from Google Sheets REST API:', error?.message || error);
     return [];
   }
 }

@@ -15,6 +15,7 @@ export interface Dish {
 }
 
 export type OrderStatus =
+  | 'Retiro en tienda'
   | 'Pedido en preparación'
   | 'Pedido listo para retiro'
   | 'Pedido en reparto'

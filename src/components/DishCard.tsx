@@ -19,6 +19,9 @@ export const formatCLP = (price: number) => {
 
 export default function DishCard({ dish, onAddToCart }: DishCardProps) {
   const [showDetails, setShowDetails] = useState(false);
+  const [showFullDescription, setShowFullDescription] = useState(false);
+
+  const isLongDescription = dish.description && dish.description.length > 60;
 
   return (
     <motion.div
@@ -68,9 +71,20 @@ export default function DishCard({ dish, onAddToCart }: DishCardProps) {
           </span>
         </div>
 
-        <p className="text-xs text-slate-500 line-clamp-2 leading-relaxed flex-grow mb-4">
-          {dish.description}
-        </p>
+        <div className="flex-grow mb-3">
+          <p className={`text-xs text-slate-500 leading-relaxed ${!showFullDescription ? 'line-clamp-2' : ''}`}>
+            {dish.description}
+          </p>
+          {isLongDescription && (
+            <button
+              type="button"
+              onClick={() => setShowFullDescription(!showFullDescription)}
+              className="text-[11px] font-bold text-red-600 hover:text-red-700 hover:underline transition-colors mt-1 inline-flex items-center gap-0.5 cursor-pointer"
+            >
+              {showFullDescription ? 'Ver menos' : 'Ver más'}
+            </button>
+          )}
+        </div>
 
         {/* Ingredients section */}
         <div className="mb-4">

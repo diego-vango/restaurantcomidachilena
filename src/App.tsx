@@ -230,7 +230,9 @@ export default function App() {
             
             // Format status message beautifully
             let statusText = '';
-            if (newStatus === 'Pedido en preparación' || newStatus === 'En Cocina') {
+            if (newStatus === 'Retiro en tienda') {
+              statusText = '🛍️ Tu pedido ha sido registrado para retiro en tienda y se encuentra en preparación.';
+            } else if (newStatus === 'Pedido en preparación' || newStatus === 'En Cocina') {
               statusText = '👨‍🍳 Tu pedido se encuentra en preparación en nuestra cocina.';
             } else if (newStatus === 'Pedido listo para retiro') {
               statusText = '🛍️ ¡Tu pedido está listo para retiro en nuestro local!';
@@ -343,6 +345,7 @@ export default function App() {
     email: string;
     phone: string;
     address: string;
+    deliveryType?: 'delivery' | 'pickup';
   }) => {
     if (!isKitchenOpenState) {
       throw new Error('La cocina está cerrada en este momento (Horario: 11:00 a 20:00 Chile).');
@@ -352,6 +355,8 @@ export default function App() {
 
     setIsPlacingOrder(true);
     try {
+      const isPickup = formData.deliveryType === 'pickup';
+
       // 1. Format order details
       const orderId = 'PED' + Math.random().toString(36).substring(2, 8).toUpperCase();
       const itemsSummary = cart.map(item => `${item.quantity}x ${item.dish.name}`).join(', ');
@@ -374,8 +379,11 @@ export default function App() {
         return 1000 + extraFee;
       };
 
-      const deliveryFee = getDeliveryFee();
+      const deliveryFee = isPickup ? 0 : getDeliveryFee();
       const totalAmount = subtotal + deliveryFee;
+
+      const initialStatus: OrderStatus = isPickup ? 'Retiro en tienda' : 'Pedido en preparación';
+      const orderAddress = isPickup ? 'Retiro en tienda' : formData.address;
 
       const newOrder: Order = {
         id: orderId,
@@ -383,12 +391,12 @@ export default function App() {
         customerName: formData.name,
         email: formData.email,
         phone: formData.phone,
-        address: formData.address,
+        address: orderAddress,
         items: itemsSummary,
         total: totalAmount,
-        status: 'Pedido en preparación',
-        routeDistance,
-        routeDuration
+        status: initialStatus,
+        routeDistance: isPickup ? 'Retiro en local' : routeDistance,
+        routeDuration: isPickup ? 'Retiro en local' : routeDuration
       };
 
       // 2. Append to backend (will write to Google Sheets if admin token is cached)
@@ -396,13 +404,15 @@ export default function App() {
 
       // 3. Update state
       setActiveOrder(newOrder);
-      previousStatusRef.current[orderId] = 'Recibido';
+      previousStatusRef.current[orderId] = initialStatus;
       setCart([]); // Clear cart
-      setActiveAddress(formData.address);
+      setActiveAddress(orderAddress);
 
       triggerNotification(
         '¡Pedido Recibido!',
-        'Tu orden fue enviada y registrada con éxito. Sigue su estado en tiempo real.',
+        isPickup
+          ? 'Tu orden para retiro en tienda fue enviada y registrada con éxito. Sigue su estado en tiempo real.'
+          : 'Tu orden fue enviada y registrada con éxito. Sigue su estado en tiempo real.',
         'success'
       );
 

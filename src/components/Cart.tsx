@@ -18,6 +18,7 @@ interface CartProps {
     email: string;
     phone: string;
     address: string;
+    deliveryType: 'delivery' | 'pickup';
   }) => Promise<void>;
   onAddressChange?: (address: string) => void;
   isSubmitting: boolean;
@@ -37,6 +38,7 @@ export default function Cart({
   routeDuration,
   isKitchenOpen = true
 }: CartProps) {
+  const [deliveryType, setDeliveryType] = useState<'delivery' | 'pickup'>('delivery');
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
   const [phone, setPhone] = useState('');
@@ -113,10 +115,11 @@ export default function Cart({
     return 1000 + extraFee;
   };
 
+  const isPickup = deliveryType === 'pickup';
   const parsedDistance = parseDistanceKm(routeDistance);
-  const isOutOfRange = routeDistance !== '' && parsedDistance > 5.0;
+  const isOutOfRange = !isPickup && routeDistance !== '' && parsedDistance > 5.0;
 
-  const deliveryFee = getDeliveryFee();
+  const deliveryFee = isPickup ? 0 : getDeliveryFee();
   const total = subtotal + deliveryFee;
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -133,8 +136,8 @@ export default function Cart({
       return;
     }
 
-    if (!name.trim() || !email.trim() || !phone.trim() || !address.trim()) {
-      setFormError('Por favor complete todos los campos de despacho.');
+    if (!name.trim() || !email.trim() || !phone.trim() || (!isPickup && !address.trim())) {
+      setFormError(isPickup ? 'Por favor complete todos los datos requeridos.' : 'Por favor complete todos los campos de despacho.');
       return;
     }
 
@@ -144,7 +147,13 @@ export default function Cart({
     }
 
     try {
-      await onSubmitOrder({ name, email, phone, address });
+      await onSubmitOrder({
+        name,
+        email,
+        phone,
+        address: isPickup ? 'Retiro en tienda' : address,
+        deliveryType
+      });
     } catch (err: any) {
       setFormError(err.message || 'Error al procesar el pedido. Reintente.');
     }
@@ -207,7 +216,43 @@ export default function Cart({
 
           {/* Checkout Form */}
           <form onSubmit={handleSubmit} className="pt-4 border-t border-slate-100 space-y-3">
-            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Datos de Despacho</h3>
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Tipo de Entrega</h3>
+
+            {/* Delivery type selector */}
+            <div className="flex bg-slate-100 p-1 rounded-2xl mb-3">
+              <button
+                type="button"
+                onClick={() => {
+                  setDeliveryType('delivery');
+                  setFormError('');
+                }}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  deliveryType === 'delivery'
+                    ? 'bg-white text-red-600 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <Navigation className="w-3.5 h-3.5" />
+                Despacho a Domicilio
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setDeliveryType('pickup');
+                  setFormError('');
+                }}
+                className={`flex-1 py-2 text-xs font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 cursor-pointer ${
+                  deliveryType === 'pickup'
+                    ? 'bg-white text-red-600 shadow-xs'
+                    : 'text-slate-500 hover:text-slate-700'
+                }`}
+              >
+                <ShoppingBag className="w-3.5 h-3.5" />
+                Retiro en Tienda
+              </button>
+            </div>
+
+            <h3 className="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Datos del Cliente</h3>
             
             <div className="relative">
               <User className="absolute left-3.5 top-3 w-4.5 h-4.5 text-slate-400" />
@@ -247,43 +292,56 @@ export default function Cart({
               </div>
             </div>
 
-            <div className="space-y-1">
-              <div className="relative">
-                <MapPin className="absolute left-3.5 top-3 w-4.5 h-4.5 text-slate-400" />
-                <input
-                  type="text"
-                  placeholder="Dirección (ej. Av. España 450, Rancagua)"
-                  value={address}
-                  onChange={(e) => {
-                    const newAddr = e.target.value;
-                    setAddress(newAddr);
-                    if (onAddressChange) onAddressChange(newAddr);
-                  }}
-                  disabled={!isKitchenOpen}
-                  className="w-full bg-slate-50 border border-slate-200/80 rounded-full py-2.5 pl-10 pr-24 text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 focus:bg-white transition-all disabled:opacity-60"
-                />
-                <button
-                  type="button"
-                  onClick={handleDetectLocation}
-                  disabled={isLocating || !isKitchenOpen}
-                  className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11px] rounded-full flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
-                  title="Detectar mi ubicación por GPS"
-                >
-                  {isLocating ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                  ) : (
-                    <Navigation className="w-3.5 h-3.5 fill-red-600" />
-                  )}
-                  <span className="hidden sm:inline">{isLocating ? 'Buscando...' : 'Mi GPS'}</span>
-                </button>
+            {/* Address field for delivery vs Pickup banner */}
+            {deliveryType === 'delivery' ? (
+              <div className="space-y-1">
+                <div className="relative">
+                  <MapPin className="absolute left-3.5 top-3 w-4.5 h-4.5 text-slate-400" />
+                  <input
+                    type="text"
+                    placeholder="Dirección (ej. Av. España 450, Rancagua)"
+                    value={address}
+                    onChange={(e) => {
+                      const newAddr = e.target.value;
+                      setAddress(newAddr);
+                      if (onAddressChange) onAddressChange(newAddr);
+                    }}
+                    disabled={!isKitchenOpen}
+                    className="w-full bg-slate-50 border border-slate-200/80 rounded-full py-2.5 pl-10 pr-24 text-xs placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 focus:bg-white transition-all disabled:opacity-60"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleDetectLocation}
+                    disabled={isLocating || !isKitchenOpen}
+                    className="absolute right-1.5 top-1.5 bottom-1.5 px-3 bg-red-50 hover:bg-red-100 text-red-600 font-bold text-[11px] rounded-full flex items-center gap-1 transition-all cursor-pointer disabled:opacity-50"
+                    title="Detectar mi ubicación por GPS"
+                  >
+                    {isLocating ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <Navigation className="w-3.5 h-3.5 fill-red-600" />
+                    )}
+                    <span className="hidden sm:inline">{isLocating ? 'Buscando...' : 'Mi GPS'}</span>
+                  </button>
+                </div>
+                <p className="text-[10px] text-slate-400 px-3 flex items-center gap-1">
+                  💡 Ingresa tu calle y número o usa <strong>Mi GPS</strong> para calcular tu envío.
+                </p>
               </div>
-              <p className="text-[10px] text-slate-400 px-3 flex items-center gap-1">
-                💡 Ingresa tu calle y número o usa <strong>Mi GPS</strong> para calcular tu envío.
-              </p>
-            </div>
+            ) : (
+              <div className="p-3.5 bg-red-50/70 border border-red-100 rounded-2xl text-xs text-red-900 flex items-start gap-2.5">
+                <MapPin className="w-4 h-4 text-red-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-bold text-red-900">Retiro en local El Copihue de Oro</p>
+                  <p className="text-[11px] text-red-700/90 mt-0.5 leading-snug">
+                    Irás a buscar tu pedido al local (Av. España 450, Rancagua). Te notificaremos cuando esté listo para retirar. No necesitas ingresar dirección de envío.
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Route calculations info if available */}
-            {routeDistance && routeDuration && (
+            {deliveryType === 'delivery' && routeDistance && routeDuration && (
               <div className="bg-slate-50/50 p-3 rounded-2xl border border-slate-100 flex items-center justify-between text-[11px] text-slate-600">
                 <span className="font-semibold flex items-center gap-1.5">
                   <MapPin className="w-3.5 h-3.5 text-red-600" />
@@ -303,7 +361,9 @@ export default function Cart({
               </div>
               <div className="flex justify-between text-slate-500">
                 <span>Despacho:</span>
-                <span className="font-semibold text-slate-700">{formatCLP(deliveryFee)}</span>
+                <span className="font-semibold text-slate-700">
+                  {isPickup ? 'Gratis ($0)' : formatCLP(deliveryFee)}
+                </span>
               </div>
               <div className="flex justify-between text-slate-900 font-bold border-t border-dashed border-slate-200 pt-2 text-sm">
                 <span>Total:</span>

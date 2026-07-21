@@ -124,11 +124,17 @@ app.post('/api/admin/init', async (req, res) => {
 
     res.json({ sheet1Name, sheet2Name, message: 'Google Sheets synced and initialized successfully' });
   } catch (err: any) {
-    console.error('Error during spreadsheet init:', err);
+    if (err?.status === 401 || err?.status === 403 || String(err?.message).includes('invalid authentication credentials')) {
+      cachedAdminToken = null;
+      try { fs.unlinkSync(TOKENS_FILE); } catch (_) {}
+      console.warn('Cached Google Sheets OAuth token expired or invalid. Cleared cached token.');
+    } else {
+      console.warn('Warning during spreadsheet init:', err?.message || err);
+    }
     res.json({
       sheet1Name: 'Ordenes',
       sheet2Name: 'Multimedia',
-      error: err.message || 'Failed to sync with Google Sheets, running in fallback mode'
+      error: err?.message || 'Failed to sync with Google Sheets, running in fallback mode'
     });
   }
 });
@@ -164,19 +170,17 @@ app.post('/api/orders', async (req, res) => {
     localOrders.push(order);
     writeJsonFile<Order[]>(ORDERS_FILE, localOrders);
 
-    // 2. Try to append to Google Sheets immediately if we have a token
+    // 2. Try to append to Google Sheets immediately via Apps Script or token
     let synced = false;
-    const tokenToUse = accessToken || cachedAdminToken;
+    const tokenToUse = accessToken || cachedAdminToken || '';
     const sheetToUse = sheet1Name || 'Ordenes';
 
-    if (tokenToUse) {
-      try {
-        await sheetsApi.createOrderInSheet(tokenToUse, sheetToUse, order);
-        synced = true;
-        console.log(`Order ${order.id} pushed successfully to Google Sheets.`);
-      } catch (e: any) {
-        console.error(`Failed to push order ${order.id} to Sheets immediately (will sync later):`, e?.message || e);
-      }
+    try {
+      await sheetsApi.createOrderInSheet(tokenToUse, sheetToUse, order);
+      synced = true;
+      console.log(`Order ${order.id} pushed successfully to Google Sheets.`);
+    } catch (e: any) {
+      console.error(`Failed to push order ${order.id} to Sheets immediately (will sync later):`, e?.message || e);
     }
 
     return res.json({ success: true, order, synced });
@@ -215,8 +219,12 @@ app.get('/api/orders', async (req, res) => {
     writeJsonFile<Order[]>(ORDERS_FILE, mergedOrders);
 
     res.json({ orders: mergedOrders });
-  } catch (err) {
-    console.warn('Failed to fetch orders from Google Sheets, returning local cache:', err);
+  } catch (err: any) {
+    if (err?.status === 401 || err?.status === 403 || String(err?.message).includes('invalid authentication credentials')) {
+      cachedAdminToken = null;
+      try { fs.unlinkSync(TOKENS_FILE); } catch (_) {}
+    }
+    console.warn('Failed to fetch orders from Google Sheets, returning local cache:', err?.message || err);
     res.json({ orders: localOrders });
   }
 });
