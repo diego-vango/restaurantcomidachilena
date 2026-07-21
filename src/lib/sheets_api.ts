@@ -250,6 +250,27 @@ async function ensureSheetHeaders(accessToken: string, sheet1Name: string, sheet
   }
 }
 
+export function extractImageUrl(rawImageCell: any): string {
+  if (!rawImageCell) return '';
+  let str = String(rawImageCell).trim();
+
+  // Handle Google Sheets formulas like =IMAGE("https://...") or =IMAGEN("https://...")
+  if (str.startsWith('=')) {
+    const urlMatch = str.match(/https?:\/\/[^\s"',\)]+/);
+    if (urlMatch) {
+      str = urlMatch[0];
+    }
+  }
+
+  // Handle Google Drive view links
+  const driveMatch = str.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (driveMatch && driveMatch[1]) {
+    return `https://lh3.googleusercontent.com/d/${driveMatch[1]}`;
+  }
+
+  return str;
+}
+
 // Fetch menu dishes from Hoja2
 export async function fetchDishesFromSheet(accessToken: string, sheet2Name: string): Promise<Dish[]> {
   try {
@@ -265,7 +286,7 @@ export async function fetchDishesFromSheet(accessToken: string, sheet2Name: stri
       const price = parseFloat(row[3]) || 0;
       const description = row[4] || '';
       const ingredients = row[5] ? row[5].split(',').map((i: string) => i.trim()).filter(Boolean) : [];
-      const image = row[6] || '';
+      const image = extractImageUrl(row[6]);
       const available = row[7] ? row[7].toLowerCase().trim() === 'si' : true;
 
       return { id, name, category, price, description, ingredients, image, available };

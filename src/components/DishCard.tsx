@@ -31,11 +31,15 @@ export default function DishCard({ dish, onAddToCart }: DishCardProps) {
       {/* Dish Image */}
       <div className="relative aspect-video w-full overflow-hidden bg-slate-100">
         <img
-          src={dish.image || 'https://images.unsplash.com/photo-1544025162-d76694265947?w=600'}
+          src={dish.image || 'https://images.unsplash.com/photo-1608039829572-78524f79c4c7?w=600&auto=format&fit=crop&q=80'}
           alt={dish.name}
           className="w-full h-full object-cover hover:scale-105 transition-transform duration-500"
           referrerPolicy="no-referrer"
           loading="lazy"
+          onError={(e) => {
+            // Fallback image if external URL fails to load due to hotlink protection/CORS
+            (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1608039829572-78524f79c4c7?w=600&auto=format&fit=crop&q=80';
+          }}
         />
         
         {/* Category Tag */}

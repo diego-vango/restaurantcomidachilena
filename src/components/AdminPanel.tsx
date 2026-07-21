@@ -10,6 +10,8 @@ import { updateOrderStatusInSheet, updateDishInSheet } from '../lib/sheets';
 import { CheckCircle2, ChevronDown, Clock, Edit2, List, Loader2, Save, ShoppingBag, RefreshCw, Eye } from 'lucide-react';
 import { motion } from 'motion/react';
 
+import { extractImageUrl } from '../lib/sheets_api';
+
 interface AdminPanelProps {
   orders: Order[];
   dishes: Dish[];
@@ -60,9 +62,10 @@ export default function AdminPanel({
   const handleSaveDish = async (dishId: string) => {
     setIsSavingDish(true);
     try {
+      const cleanImage = extractImageUrl(editImageLink);
       await updateDishInSheet(accessToken, sheet2Name, dishId, {
         name: editName,
-        image: editImageLink,
+        image: cleanImage,
         price: editPrice,
         description: editDescription
       });
@@ -264,10 +267,13 @@ export default function AdminPanel({
                 ) : (
                   <div className="flex gap-3">
                     <img
-                      src={dish.image}
+                      src={dish.image || 'https://images.unsplash.com/photo-1608039829572-78524f79c4c7?w=600&auto=format&fit=crop&q=80'}
                       alt={dish.name}
                       className="w-16 h-16 object-cover rounded-xl flex-shrink-0 bg-slate-100 border border-slate-200"
                       referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://images.unsplash.com/photo-1608039829572-78524f79c4c7?w=600&auto=format&fit=crop&q=80';
+                      }}
                     />
                     <div className="flex-grow min-w-0 space-y-1">
                       <div className="flex items-start justify-between gap-2">
