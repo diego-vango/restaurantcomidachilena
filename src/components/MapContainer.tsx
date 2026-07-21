@@ -11,7 +11,7 @@ export const RESTAURANT_ADDRESS = 'El Copihue de Oro, Rancagua, Región de O\'Hi
 
 interface MapProps {
   customerAddress?: string;
-  orderStatus?: 'Recibido' | 'En Cocina' | 'En Camino' | 'Entregado' | 'Cancelado' | '';
+  orderStatus?: string;
   onRouteCalculated?: (distance: string, duration: string) => void;
   height?: string;
 }

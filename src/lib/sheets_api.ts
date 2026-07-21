@@ -6,7 +6,7 @@
 import { Dish, Order, OrderStatus } from '../types';
 
 export const SPREADSHEET_ID = '1FRWWdb28nT8NHV0Wt1mfMiUGcMN2RValX5D2HBQX8mg';
-export const APPS_SCRIPT_URL = 'https://script.google.com/a/macros/somostrino.cl/s/AKfycbzMZxiCT1EzqSvTywyrGswIZyHFwfm9_vCT80AnMq9G_3IRwgJd6BSOIthmFD65D0x6Dg/exec';
+export const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwFnmJUVjAgrozI0vcqrv-N9yNugDKVDl9Qv5ivBJjGDUNYT-6jgHTMu86IyqF7H4ni/exec';
 
 export const DEFAULT_DISHES: Dish[] = [
   {

@@ -230,14 +230,18 @@ export default function App() {
             
             // Format status message beautifully
             let statusText = '';
-            if (newStatus === 'En Cocina') {
-              statusText = '👨‍🍳 Tu plato ya está en preparación con nuestros mejores cocineros.';
-            } else if (newStatus === 'En Camino') {
-              statusText = '🛵 ¡Tu pedido va en camino! Nuestro repartidor se dirige a tu dirección.';
+            if (newStatus === 'Pedido en preparación' || newStatus === 'En Cocina') {
+              statusText = '👨‍🍳 Tu pedido se encuentra en preparación en nuestra cocina.';
+            } else if (newStatus === 'Pedido listo para retiro') {
+              statusText = '🛍️ ¡Tu pedido está listo para retiro en nuestro local!';
+            } else if (newStatus === 'Pedido en reparto' || newStatus === 'En Camino') {
+              statusText = '🛵 ¡Tu pedido va en reparto hacia tu dirección!';
             } else if (newStatus === 'Entregado') {
               statusText = '🎉 ¡Entregado! Esperamos que disfrutes del sabor tradicional de El Copihue de Oro.';
             } else if (newStatus === 'Cancelado') {
               statusText = '❌ Lo sentimos, tu pedido ha sido cancelado por el restaurante.';
+            } else {
+              statusText = `Tu pedido ha cambiado de estado a: ${newStatus}`;
             }
 
             triggerNotification(
@@ -382,7 +386,7 @@ export default function App() {
         address: formData.address,
         items: itemsSummary,
         total: totalAmount,
-        status: 'Recibido',
+        status: 'Pedido en preparación',
         routeDistance,
         routeDuration
       };
@@ -645,48 +649,58 @@ export default function App() {
                     </p>
 
                     {/* Progress timeline */}
-                    <div className="flex justify-between items-center gap-1 relative mb-6">
-                      <div className="absolute left-1 right-1 top-[11px] h-0.5 bg-slate-100 -z-10" />
-                      <div
-                        className="absolute left-1 top-[11px] h-0.5 bg-red-500 -z-10 transition-all duration-1000"
-                        style={{
-                          width:
-                            activeOrder.status === 'Recibido' ? '0%' :
-                            activeOrder.status === 'En Cocina' ? '33%' :
-                            activeOrder.status === 'En Camino' ? '66%' : '100%'
-                        }}
-                      />
-
-                      {/* Status circles */}
-                      {[
-                        { key: 'Recibido', icon: '📝', label: 'Recibido' },
-                        { key: 'En Cocina', icon: '🍳', label: 'Cocina' },
-                        { key: 'En Camino', icon: '🛵', label: 'En Camino' },
+                    {(() => {
+                      const steps = [
+                        { key: 'Pedido en preparación', icon: '👨‍🍳', label: 'En preparación' },
+                        { key: 'Pedido listo para retiro', icon: '🛍️', label: 'Listo para retiro' },
+                        { key: 'Pedido en reparto', icon: '🛵', label: 'En reparto' },
                         { key: 'Entregado', icon: '🎉', label: 'Entregado' }
-                      ].map((step, idx) => {
-                        const states = ['Recibido', 'En Cocina', 'En Camino', 'Entregado'];
-                        const currentIdx = states.indexOf(activeOrder.status);
-                        const isDone = currentIdx >= idx;
-                        const isCurrent = activeOrder.status === step.key;
+                      ];
 
-                        return (
-                          <div key={step.key} className="flex flex-col items-center">
-                            <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shadow-xs border transition-all ${
-                              isCurrent ? 'bg-red-600 border-red-600 text-white scale-110 ring-4 ring-red-50 animate-pulse' :
-                              isDone ? 'bg-red-500 border-red-500 text-white' :
-                              'bg-white border-slate-200 text-slate-400'
-                            }`}>
-                              {step.icon}
-                            </div>
-                            <span className={`text-[9px] font-bold mt-1 tracking-tight uppercase ${
-                              isCurrent ? 'text-red-600' : isDone ? 'text-slate-800' : 'text-slate-400'
-                            }`}>
-                              {step.label}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                      const getStepIdx = (statusStr: string) => {
+                        const s = (statusStr || '').toLowerCase();
+                        if (s.includes('preparaci') || s.includes('preparacion') || s.includes('recibido') || s.includes('cocina')) return 0;
+                        if (s.includes('listo') || s.includes('retiro')) return 1;
+                        if (s.includes('reparto') || s.includes('camino')) return 2;
+                        if (s.includes('entregado') || s.includes('entrega')) return 3;
+                        return 0;
+                      };
+
+                      const currentIdx = getStepIdx(activeOrder.status);
+                      const widthPercent = (currentIdx / 3) * 100;
+
+                      return (
+                        <div className="flex justify-between items-center gap-1 relative mb-6">
+                          <div className="absolute left-1 right-1 top-[11px] h-0.5 bg-slate-100 -z-10" />
+                          <div
+                            className="absolute left-1 top-[11px] h-0.5 bg-red-500 -z-10 transition-all duration-1000"
+                            style={{ width: `${widthPercent}%` }}
+                          />
+
+                          {steps.map((step, idx) => {
+                            const isDone = currentIdx >= idx;
+                            const isCurrent = currentIdx === idx;
+
+                            return (
+                              <div key={step.key} className="flex flex-col items-center text-center">
+                                <div className={`w-7 h-7 rounded-full flex items-center justify-center text-xs font-semibold shadow-xs border transition-all ${
+                                  isCurrent ? 'bg-red-600 border-red-600 text-white scale-110 ring-4 ring-red-50 animate-pulse' :
+                                  isDone ? 'bg-red-500 border-red-500 text-white' :
+                                  'bg-white border-slate-200 text-slate-400'
+                                }`}>
+                                  {step.icon}
+                                </div>
+                                <span className={`text-[8px] font-bold mt-1 tracking-tight uppercase max-w-[65px] leading-tight ${
+                                  isCurrent ? 'text-red-600' : isDone ? 'text-slate-800' : 'text-slate-400'
+                                }`}>
+                                  {step.label}
+                                </span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
 
                     <div className="p-4 bg-slate-50 rounded-2xl text-xs space-y-2">
                       <div className="flex justify-between text-slate-500">

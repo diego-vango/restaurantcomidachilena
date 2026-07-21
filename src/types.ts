@@ -14,7 +14,15 @@ export interface Dish {
   available: boolean;
 }
 
-export type OrderStatus = 'Recibido' | 'En Cocina' | 'En Camino' | 'Entregado' | 'Cancelado';
+export type OrderStatus =
+  | 'Pedido en preparación'
+  | 'Pedido listo para retiro'
+  | 'Pedido en reparto'
+  | 'Entregado'
+  | 'Recibido'
+  | 'En Cocina'
+  | 'En Camino'
+  | 'Cancelado';
 
 export interface Order {
   id: string;
