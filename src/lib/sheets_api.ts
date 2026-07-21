@@ -6,7 +6,7 @@
 import { Dish, Order, OrderStatus } from '../types';
 
 export const SPREADSHEET_ID = '1FRWWdb28nT8NHV0Wt1mfMiUGcMN2RValX5D2HBQX8mg';
-export const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbwFnmJUVjAgrozI0vcqrv-N9yNugDKVDl9Qv5ivBJjGDUNYT-6jgHTMu86IyqF7H4ni/exec';
+export const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMLnjwAanXzElap619GlJ5scZ8jqIXYVUpSuaX1pYuVEWofaajBFO6jV_4RRpKIMvZxg/exec';
 
 export const DEFAULT_DISHES: Dish[] = [
   {
@@ -520,6 +520,31 @@ export async function fetchOrdersFromSheet(accessToken: string, sheet1Name: stri
   }
 }
 
+// Send Order Status update directly to Apps Script Web App URL
+export async function postStatusUpdateToAppsScript(orderId: string, newStatus: string, email?: string): Promise<boolean> {
+  if (!APPS_SCRIPT_URL) return false;
+
+  const payload = {
+    action: 'updateStatus',
+    id: orderId,
+    status: newStatus,
+    email: email || ''
+  };
+
+  try {
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify(payload),
+      redirect: 'follow'
+    });
+    return true;
+  } catch (e) {
+    console.warn('Apps Script status update error:', e);
+    return false;
+  }
+}
+
 // Update order status in Sheet (for Admin panel)
 export async function updateOrderStatusInSheet(
   accessToken: string,
@@ -527,25 +552,31 @@ export async function updateOrderStatusInSheet(
   orderId: string,
   newStatus: OrderStatus
 ): Promise<void> {
-  try {
-    // We first read all orders to find the exact row number
-    const orders = await fetchOrdersFromSheet(accessToken, sheet1Name);
-    const index = orders.findIndex(o => o.id === orderId);
+  // 1. Notify Apps Script of status change
+  postStatusUpdateToAppsScript(orderId, newStatus).catch(e => console.warn('postStatusUpdateToAppsScript err:', e));
 
-    if (index === -1) {
-      throw new Error(`Order ID ${orderId} not found in sheet`);
+  // 2. Update Google Sheet REST API if token is provided
+  if (accessToken) {
+    try {
+      // We first read all orders to find the exact row number
+      const orders = await fetchOrdersFromSheet(accessToken, sheet1Name);
+      const index = orders.findIndex(o => o.id === orderId);
+
+      if (index === -1) {
+        throw new Error(`Order ID ${orderId} not found in sheet`);
+      }
+
+      // Row number is index + 2 (since headers are row 1 and indexes are 0-based)
+      const rowNum = index + 2;
+      const range = `${sheet1Name}!I${rowNum}`;
+
+      await sheetsApiRequest(`/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`, 'PUT', accessToken, {
+        values: [[newStatus]]
+      });
+    } catch (error) {
+      console.error('Error updating order status in sheet:', error);
+      throw error;
     }
-
-    // Row number is index + 2 (since headers are row 1 and indexes are 0-based)
-    const rowNum = index + 2;
-    const range = `${sheet1Name}!I${rowNum}`;
-
-    await sheetsApiRequest(`/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`, 'PUT', accessToken, {
-      values: [[newStatus]]
-    });
-  } catch (error) {
-    console.error('Error updating order status in sheet:', error);
-    throw error;
   }
 }
 

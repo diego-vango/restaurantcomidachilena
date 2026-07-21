@@ -242,18 +242,14 @@ app.post('/api/orders/status', async (req, res) => {
     writeJsonFile<Order[]>(ORDERS_FILE, localOrders);
   }
 
-  // 2. Push update to Google Sheets
-  if (tokenToUse) {
-    try {
-      await sheetsApi.updateOrderStatusInSheet(tokenToUse, 'Ordenes', orderId, newStatus);
-      return res.json({ success: true });
-    } catch (err: any) {
-      console.error(`Failed to update order status ${orderId} in Sheets:`, err);
-      return res.status(500).json({ error: err.message || 'Error updating Sheets' });
-    }
+  // 2. Push update to Google Sheets & Apps Script
+  try {
+    await sheetsApi.updateOrderStatusInSheet(tokenToUse || '', 'Ordenes', orderId, newStatus);
+    return res.json({ success: true });
+  } catch (err: any) {
+    console.error(`Failed to update order status ${orderId} in Sheets:`, err);
+    return res.status(500).json({ error: err.message || 'Error updating Sheets' });
   }
-
-  res.json({ success: true, message: 'Updated locally only (no active Sheets token)' });
 });
 
 // 6. Update dish (Admin)
