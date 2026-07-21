@@ -1,0 +1,6 @@
+{
+  "name": "El Copihue de Oro - Sabores Chilenos",
+  "description": "Página web de pedidos para restaurant de comida chilena, sincronizada en tiempo real con Google Sheets para menús, multimedia y registros de órdenes, con rutas en Google Maps y notificaciones push.",
+  "requestFramePermissions": ["geolocation"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

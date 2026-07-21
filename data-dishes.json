@@ -1,0 +1,108 @@
+[
+  {
+    "id": "pastel-de-choclo",
+    "name": "Pastel de Choclo",
+    "category": "Platos Principales",
+    "price": 9500,
+    "description": "Tradicional pastel chileno con pino de carne picada jugosa, pollo tierno, huevo duro, aceitunas y pasas, cubierto con una capa de pastelera de choclo tierno y azúcar dorada al horno de greda.",
+    "ingredients": [
+      "Choclo",
+      "Carne de vacuno",
+      "Pollo",
+      "Cebolla",
+      "Huevo duro",
+      "Aceitunas",
+      "Pasas",
+      "Condimentos chilenos"
+    ],
+    "image": "https://images.unsplash.com/photo-1608039829572-78524f79c4c7?w=600&auto=format&fit=crop&q=80",
+    "available": true
+  },
+  {
+    "id": "empanada-de-pino",
+    "name": "Empanada de Pino",
+    "category": "Entradas",
+    "price": 2800,
+    "description": "La clásica empanada chilena al horno, rellena con un sabroso y jugoso pino de carne de vacuno picada, cebollas caramelizadas, una aceituna entera, pasas y un trozo de huevo duro.",
+    "ingredients": [
+      "Carne de vacuno picada",
+      "Cebolla",
+      "Huevo duro",
+      "Aceituna",
+      "Pasas",
+      "Harina de trigo",
+      "Manteca"
+    ],
+    "image": "https://images.unsplash.com/photo-1541518763669-27fef04b14ea?w=600&auto=format&fit=crop&q=80",
+    "available": true
+  },
+  {
+    "id": "cazuela-de-vacuno",
+    "name": "Cazuela de Vacuno",
+    "category": "Platos Principales",
+    "price": 8900,
+    "description": "Un caldo reponedor y casero que contiene un tierno trozo de tapapecho de vacuno, una papa entera dorada, un trozo de choclo dulce, zapallo camote, arroz y un toque aromático de cilantro y orégano fresco.",
+    "ingredients": [
+      "Tapa de pecho de vacuno",
+      "Papa",
+      "Choclo dulce",
+      "Zapallo camote",
+      "Arroz",
+      "Zanahoria",
+      "Porotos verdes",
+      "Cilantro"
+    ],
+    "image": "https://images.unsplash.com/photo-1603105037880-880cd4edfb0d?w=600&auto=format&fit=crop&q=80",
+    "available": true
+  },
+  {
+    "id": "mote-con-huesillo",
+    "name": "Mote con Huesillo",
+    "category": "Postres",
+    "price": 3200,
+    "description": "La bebida y postre nacional chileno. Huesillos (duraznos deshidratados) cocidos en un almíbar dulce aromatizado con canela y cáscara de naranja, servidos helados sobre una generosa porción de mote de trigo cocido.",
+    "ingredients": [
+      "Huesillos (duraznos deshidratados)",
+      "Mote de trigo",
+      "Chancaca o azúcar",
+      "Rama de canela",
+      "Cáscara de naranja"
+    ],
+    "image": "https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=600&auto=format&fit=crop&q=80",
+    "available": true
+  },
+  {
+    "id": "humitas-chilenas",
+    "name": "Humitas Chilenas",
+    "category": "Platos Principales",
+    "price": 6500,
+    "description": "Dos humitas de choclo tierno molido mezclado con albahaca fresca picada, cebolla frita y condimentos, envueltas en las propias hojas del choclo y cocidas al vapor. Se sirven solas, con azúcar o ensalada chilena.",
+    "ingredients": [
+      "Choclo pastelero",
+      "Albahaca fresca",
+      "Cebolla",
+      "Manteca o aceite",
+      "Leche",
+      "Sal",
+      "Ají de color"
+    ],
+    "image": "https://images.unsplash.com/photo-1568106690101-fd6822e876f6?w=600&auto=format&fit=crop&q=80",
+    "available": true
+  },
+  {
+    "id": "pisco-sour-chileno",
+    "name": "Pisco Sour Chileno",
+    "category": "Bebidas",
+    "price": 4500,
+    "description": "Cóctel emblemático y refrescante elaborado con pisco chileno de doble destilación, jugo natural exprimido de limón sutil, jarabe de goma y claras de huevo batidas para lograr una espuma suave y persistente.",
+    "ingredients": [
+      "Pisco Chileno",
+      "Limón sutil",
+      "Jarabe de goma o azúcar flor",
+      "Clara de huevo",
+      "Hielo"
+    ],
+    "image": "https://images.unsplash.com/photo-1536935338788-846bb9981813?w=600&auto=format&fit=crop&q=80",
+    "available": true
+  }
+]
