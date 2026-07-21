@@ -6,7 +6,7 @@
 import React, { useState } from 'react';
 import { CartItem, Dish, Order } from '../types';
 import { formatCLP } from './DishCard';
-import { MapPin, ShoppingBag, Trash2, User, Phone, Mail, Loader2, ArrowRight, Navigation } from 'lucide-react';
+import { MapPin, ShoppingBag, Trash2, User, Phone, Mail, Loader2, ArrowRight, Navigation, AlertTriangle } from 'lucide-react';
 import { motion } from 'motion/react';
 
 interface CartProps {
@@ -113,6 +113,9 @@ export default function Cart({
     return 1000 + extraFee;
   };
 
+  const parsedDistance = parseDistanceKm(routeDistance);
+  const isOutOfRange = routeDistance !== '' && parsedDistance > 5.0;
+
   const deliveryFee = getDeliveryFee();
   const total = subtotal + deliveryFee;
 
@@ -132,6 +135,11 @@ export default function Cart({
 
     if (!name.trim() || !email.trim() || !phone.trim() || !address.trim()) {
       setFormError('Por favor complete todos los campos de despacho.');
+      return;
+    }
+
+    if (isOutOfRange) {
+      setFormError(`La dirección ingresada (${routeDistance}) está fuera de nuestro rango de reparto de 5.0 km.`);
       return;
     }
 
@@ -303,6 +311,18 @@ export default function Cart({
               </div>
             </div>
 
+            {isOutOfRange && (
+              <div className="p-3.5 bg-rose-50 border border-rose-200 text-rose-900 text-xs rounded-2xl flex items-start gap-2.5">
+                <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-extrabold text-rose-900">Fuera de Cobertura de Despacho</p>
+                  <p className="text-[11px] text-rose-800 mt-0.5 leading-snug">
+                    Tu dirección está a <strong>{routeDistance}</strong>. Nuestro servicio de reparto sólo cubre hasta <strong>5.0 km</strong> de distancia en Rancagua.
+                  </p>
+                </div>
+              </div>
+            )}
+
             {!isKitchenOpen && (
               <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs font-semibold rounded-2xl text-center">
                 🚫 Cocina Cerrada en este momento.<br/>El horario de pedidos es de 11:00 a 20:00 (Hora de Chile).
@@ -315,7 +335,7 @@ export default function Cart({
 
             <button
               type="submit"
-              disabled={isSubmitting || !isKitchenOpen}
+              disabled={isSubmitting || !isKitchenOpen || isOutOfRange}
               className="w-full py-3 bg-red-600 hover:bg-red-700 text-white font-bold rounded-2xl text-xs uppercase tracking-wider transition-all flex items-center justify-center gap-2 shadow-lg shadow-red-200/80 disabled:bg-slate-300 disabled:shadow-none cursor-pointer"
             >
               {isSubmitting ? (
@@ -326,6 +346,10 @@ export default function Cart({
               ) : !isKitchenOpen ? (
                 <>
                   Cocina Cerrada (11:00 a 20:00)
+                </>
+              ) : isOutOfRange ? (
+                <>
+                  Fuera de Rango (Máx 5.0 km)
                 </>
               ) : (
                 <>

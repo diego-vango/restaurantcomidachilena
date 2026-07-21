@@ -16,6 +16,58 @@ interface MapProps {
   height?: string;
 }
 
+const calculateHaversineKm = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+  const R = 6371; // Earth radius in km
+  const dLat = ((lat2 - lat1) * Math.PI) / 180;
+  const dLon = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+    Math.cos((lat1 * Math.PI) / 180) *
+      Math.cos((lat2 * Math.PI) / 180) *
+      Math.sin(dLon / 2) *
+      Math.sin(dLon / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return parseFloat((R * c).toFixed(1));
+};
+
+// Known cities distance mapping from Rancagua (-34.173000, -70.684111)
+const KNOWN_FAR_LOCATIONS: { [key: string]: number } = {
+  talca: 165.0,
+  santiago: 85.0,
+  providencia: 86.0,
+  'las condes': 92.0,
+  vitacura: 94.0,
+  'ñuñoa': 86.0,
+  nunoa: 86.0,
+  'maipú': 80.0,
+  maipu: 80.0,
+  'puente alto': 75.0,
+  'la florida': 80.0,
+  curico: 110.0,
+  'curicó': 110.0,
+  'san fernando': 54.0,
+  rengo: 30.0,
+  chimbarongo: 70.0,
+  'viña del mar': 195.0,
+  vina: 195.0,
+  valparaiso: 195.0,
+  'valparaíso': 195.0,
+  concepcion: 420.0,
+  'concepción': 420.0,
+  chillan: 310.0,
+  'chillán': 310.0,
+  temuco: 600.0,
+  antofagasta: 1400.0,
+  machali: 6.5,
+  'machalí': 6.5,
+  graneros: 12.5,
+  olivar: 9.8,
+  donihue: 15.0,
+  'doñihue': 15.0,
+  requinoa: 18.0,
+  'requínoa': 18.0,
+};
+
 export default function MapContainer({
   customerAddress,
   orderStatus,
@@ -25,65 +77,94 @@ export default function MapContainer({
   const [estimatedDistance, setEstimatedDistance] = useState<string>('');
   const [estimatedDuration, setEstimatedDuration] = useState<string>('');
 
-  // Automatically calculate a realistic delivery route distance and duration 
+  // Automatically calculate real delivery route distance and duration 
   // whenever a customer inputs their address or uses GPS location.
   useEffect(() => {
-    if (customerAddress && customerAddress.trim().length > 2 && onRouteCalculated) {
-      let baseDistance = 2.0;
-      const lowerAddr = customerAddress.toLowerCase();
-
-      // Check if address contains lat/lng coordinates (e.g. from GPS)
-      const coordsMatch = customerAddress.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
-      if (coordsMatch) {
-        const lat = parseFloat(coordsMatch[1]);
-        const lon = parseFloat(coordsMatch[2]);
-        // Restaurant coords: lat: -34.173000, lng: -70.684111
-        const R = 6371; // km
-        const dLat = (lat - (-34.173000)) * Math.PI / 180;
-        const dLon = (lon - (-70.684111)) * Math.PI / 180;
-        const a =
-          Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-          Math.cos(-34.173000 * Math.PI / 180) * Math.cos(lat * Math.PI / 180) *
-          Math.sin(dLon / 2) * Math.sin(dLon / 2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-        const realKm = R * c;
-        baseDistance = Math.max(0.8, Math.min(25, parseFloat(realKm.toFixed(1))));
-      } else if (lowerAddr.includes('machalí') || lowerAddr.includes('machali')) {
-        baseDistance = 6.2;
-      } else if (lowerAddr.includes('graneros')) {
-        baseDistance = 12.5;
-      } else if (lowerAddr.includes('olivar')) {
-        baseDistance = 9.8;
-      } else if (lowerAddr.includes('doñihue') || lowerAddr.includes('donihue')) {
-        baseDistance = 15.0;
-      } else if (lowerAddr.includes('centro') || lowerAddr.includes('plaza')) {
-        baseDistance = 1.2;
-      } else {
-        // Hash seed for consistent distance per street name
-        let hash = 0;
-        for (let i = 0; i < customerAddress.length; i++) {
-          hash = (hash << 5) - hash + customerAddress.charCodeAt(i);
-          hash |= 0;
-        }
-        const variation = (Math.abs(hash) % 40) / 10; // 0.0 to 3.9 km
-        baseDistance = 1.2 + variation; // 1.2km to 5.1km
-      }
-
-      const travelTimeMinutes = Math.round(baseDistance * 3.5 + 4);
-      const totalDeliveryTimeMinutes = 25 + travelTimeMinutes;
-
-      const distStr = `${baseDistance.toFixed(1)} km`;
-      const travelDurStr = `${travelTimeMinutes} min`;
-      const totalDurStr = `${totalDeliveryTimeMinutes} min`;
-
-      setEstimatedDistance(distStr);
-      setEstimatedDuration(totalDurStr);
-      onRouteCalculated(distStr, travelDurStr);
-    } else if (onRouteCalculated && (!customerAddress || customerAddress.trim().length <= 2)) {
+    if (!customerAddress || customerAddress.trim().length <= 2) {
       setEstimatedDistance('');
       setEstimatedDuration('');
-      onRouteCalculated('', '');
+      if (onRouteCalculated) onRouteCalculated('', '');
+      return;
     }
+
+    let isCancelled = false;
+    const lowerAddr = customerAddress.toLowerCase().trim();
+
+    // 1. Check if input contains GPS lat,lng
+    const coordsMatch = customerAddress.match(/(-?\d+\.\d+),\s*(-?\d+\.\d+)/);
+    if (coordsMatch) {
+      const lat = parseFloat(coordsMatch[1]);
+      const lon = parseFloat(coordsMatch[2]);
+      const realKm = calculateHaversineKm(RESTAURANT_COORDS.lat, RESTAURANT_COORDS.lng, lat, lon);
+      const travelTimeMinutes = Math.round(realKm * 3.5 + 4);
+      const totalDeliveryTimeMinutes = 25 + travelTimeMinutes;
+
+      setEstimatedDistance(`${realKm} km`);
+      setEstimatedDuration(`${totalDeliveryTimeMinutes} min`);
+      if (onRouteCalculated) onRouteCalculated(`${realKm} km`, `${travelTimeMinutes} min`);
+      return;
+    }
+
+    // 2. Check known far cities directly (instant response for Talca, Santiago, etc.)
+    let matchedFarKm: number | null = null;
+    for (const [cityName, distKm] of Object.entries(KNOWN_FAR_LOCATIONS)) {
+      if (lowerAddr.includes(cityName)) {
+        matchedFarKm = distKm;
+        break;
+      }
+    }
+
+    if (matchedFarKm !== null) {
+      const travelTimeMinutes = Math.round(matchedFarKm * 3.5 + 4);
+      const totalDeliveryTimeMinutes = 25 + travelTimeMinutes;
+      setEstimatedDistance(`${matchedFarKm} km`);
+      setEstimatedDuration(`${totalDeliveryTimeMinutes} min`);
+      if (onRouteCalculated) onRouteCalculated(`${matchedFarKm} km`, `${travelTimeMinutes} min`);
+    } else {
+      // Immediate default assumption for local Rancagua streets while geocoding
+      const defaultKm = 2.2;
+      const travelTimeMinutes = 10;
+      const totalDeliveryTimeMinutes = 35;
+      setEstimatedDistance(`${defaultKm} km`);
+      setEstimatedDuration(`${totalDeliveryTimeMinutes} min`);
+      if (onRouteCalculated) onRouteCalculated(`${defaultKm} km`, `${travelTimeMinutes} min`);
+    }
+
+    // 3. Perform accurate async Nominatim geocoding
+    const searchQuery = lowerAddr.includes('rancagua')
+      ? `${customerAddress}, Chile`
+      : `${customerAddress}, Rancagua, Chile`;
+
+    const timer = setTimeout(async () => {
+      try {
+        const resp = await fetch(
+          `https://nominatim.openstreetmap.org/search?q=${encodeURIComponent(searchQuery)}&format=json&limit=1`
+        );
+        if (resp.ok) {
+          const data = await resp.json();
+          if (data && data.length > 0 && data[0].lat && data[0].lon) {
+            const lat = parseFloat(data[0].lat);
+            const lon = parseFloat(data[0].lon);
+            const realKm = calculateHaversineKm(RESTAURANT_COORDS.lat, RESTAURANT_COORDS.lng, lat, lon);
+
+            if (!isCancelled) {
+              const travelTimeMinutes = Math.round(realKm * 3.5 + 4);
+              const totalDeliveryTimeMinutes = 25 + travelTimeMinutes;
+              setEstimatedDistance(`${realKm} km`);
+              setEstimatedDuration(`${totalDeliveryTimeMinutes} min`);
+              if (onRouteCalculated) onRouteCalculated(`${realKm} km`, `${travelTimeMinutes} min`);
+            }
+          }
+        }
+      } catch (err) {
+        console.log('Geocoding error:', err);
+      }
+    }, 500);
+
+    return () => {
+      isCancelled = true;
+      clearTimeout(timer);
+    };
   }, [customerAddress, onRouteCalculated]);
 
   const googleMapsUrl = `https://www.google.com/maps/search/?api=1&query=${RESTAURANT_COORDS.lat},${RESTAURANT_COORDS.lng}`;
