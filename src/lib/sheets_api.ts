@@ -6,7 +6,7 @@
 import { Dish, Order, OrderStatus } from '../types';
 
 export const SPREADSHEET_ID = '1FRWWdb28nT8NHV0Wt1mfMiUGcMN2RValX5D2HBQX8mg';
-export const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbyMLnjwAanXzElap619GlJ5scZ8jqIXYVUpSuaX1pYuVEWofaajBFO6jV_4RRpKIMvZxg/exec';
+export const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbw0t53ttjd5SQnJV0VyX2e3C0Cu5jdJkUPWyHhD4EWUCrFQSZUavLe6Er-WtZ7RB_Jqlw/exec';
 
 export const DEFAULT_DISHES: Dish[] = [
   {
@@ -397,29 +397,29 @@ export async function fetchDishesFromSheetPublic(sheetName: string = 'Multimedia
         const c = r.c || [];
         if (!c[0] && !c[1]) continue; // Skip empty rows
 
-        const id = c[0]?.v ? String(c[0].v).trim() : '';
-        const nameVal = c[1]?.v ? String(c[1].v).trim() : '';
+        const id = c[0]?.v != null ? String(c[0].v).trim() : (c[0]?.f != null ? String(c[0].f).trim() : '');
+        const nameVal = c[1]?.v != null ? String(c[1].v).trim() : (c[1]?.f != null ? String(c[1].f).trim() : '');
 
         // Skip header row if included
-        if (id.toLowerCase() === 'id' || nameVal.toLowerCase() === 'nombre') continue;
+        if (!id || !nameVal || id.toLowerCase() === 'id' || nameVal.toLowerCase() === 'nombre') continue;
 
-        const category = c[2]?.v ? String(c[2].v).trim() : 'Platos Principales';
+        const category = c[2]?.v != null ? String(c[2].v).trim() : (c[2]?.f != null ? String(c[2].f).trim() : 'Platos Principales');
         const rawPriceVal = c[3]?.v ?? c[3]?.f;
         const price = parseChileanPrice(rawPriceVal);
-        const description = c[4]?.v ? String(c[4].v).trim() : '';
-        const ingredientsStr = c[5]?.v ? String(c[5].v).trim() : '';
+
+        const description = c[4]?.v != null ? String(c[4].v).trim() : (c[4]?.f != null ? String(c[4].f).trim() : '');
+        const ingredientsStr = c[5]?.v != null ? String(c[5].v).trim() : (c[5]?.f != null ? String(c[5].f).trim() : '');
         const ingredients = ingredientsStr ? ingredientsStr.split(',').map((i: string) => i.trim()).filter(Boolean) : [];
 
         // Check formula/formatted string (.f), raw string (.v), or formatted value for image URL
         const rawImg = c[6]?.f || c[6]?.v || (typeof c[6] === 'string' ? c[6] : '');
         const image = extractImageUrl(rawImg);
 
-        const availableVal = c[7]?.v ? String(c[7].v).toLowerCase().trim() : 'si';
+        const rawAvail = c[7]?.v != null ? String(c[7].v) : (c[7]?.f != null ? String(c[7].f) : '');
+        const availableVal = rawAvail ? rawAvail.toLowerCase().trim() : 'si';
         const available = availableVal !== 'no' && availableVal !== 'false';
 
-        if (id && nameVal) {
-          dishes.push({ id, name: nameVal, category, price, description, ingredients, image, available });
-        }
+        dishes.push({ id, name: nameVal, category, price, description, ingredients, image, available });
       }
 
       if (dishes.length > 0) {
@@ -523,7 +523,7 @@ export async function fetchOrdersFromSheet(accessToken: string, sheet1Name: stri
         address: row[5] || '',
         items: row[6] || '',
         total: parseFloat(row[7]) || 0,
-        status: (row[8] as OrderStatus) || 'Recibido',
+        status: (row[8] as OrderStatus) || 'Pedido en preparación',
         routeDistance: row[9] || '',
         routeDuration: row[10] || ''
       };
@@ -535,26 +535,53 @@ export async function fetchOrdersFromSheet(accessToken: string, sheet1Name: stri
 }
 
 // Send Order Status update directly to Apps Script Web App URL
-export async function postStatusUpdateToAppsScript(orderId: string, newStatus: string, email?: string): Promise<boolean> {
+export async function postStatusUpdateToAppsScript(
+  orderId: string,
+  newStatus: string,
+  email?: string,
+  customerName?: string
+): Promise<boolean> {
   if (!APPS_SCRIPT_URL) return false;
 
   const payload = {
     action: 'updateStatus',
     id: orderId,
     status: newStatus,
-    email: email || ''
+    email: email || '',
+    customerName: customerName || ''
   };
 
   try {
+    // 1. Try URL-encoded Form POST (most robust for Apps Script without CORS issues)
+    const formData = new URLSearchParams();
+    formData.append('action', 'updateStatus');
+    formData.append('id', orderId);
+    formData.append('status', newStatus);
+    if (email) formData.append('email', email);
+    if (customerName) formData.append('customerName', customerName);
+
+    await fetch(APPS_SCRIPT_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: formData.toString(),
+      mode: 'no-cors'
+    });
+    return true;
+  } catch (e) {
+    console.warn('Apps Script status update form error:', e);
+  }
+
+  try {
+    // 2. Fallback JSON POST
     await fetch(APPS_SCRIPT_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' },
       body: JSON.stringify(payload),
-      redirect: 'follow'
+      mode: 'no-cors'
     });
     return true;
   } catch (e) {
-    console.warn('Apps Script status update error:', e);
+    console.warn('Apps Script status update JSON error:', e);
     return false;
   }
 }
@@ -566,32 +593,34 @@ export async function updateOrderStatusInSheet(
   orderId: string,
   newStatus: OrderStatus
 ): Promise<void> {
-  // 1. Notify Apps Script of status change
-  postStatusUpdateToAppsScript(orderId, newStatus).catch(e => console.warn('postStatusUpdateToAppsScript err:', e));
+  let customerEmail = '';
+  let customerName = '';
 
-  // 2. Update Google Sheet REST API if token is provided
+  // 1. Update Google Sheet REST API if token is provided
   if (accessToken) {
     try {
-      // We first read all orders to find the exact row number
       const orders = await fetchOrdersFromSheet(accessToken, sheet1Name);
       const index = orders.findIndex(o => o.id === orderId);
 
-      if (index === -1) {
-        throw new Error(`Order ID ${orderId} not found in sheet`);
+      if (index !== -1) {
+        const order = orders[index];
+        customerEmail = order.email;
+        customerName = order.customerName;
+
+        const rowNum = index + 2;
+        const range = `${sheet1Name}!I${rowNum}`;
+
+        await sheetsApiRequest(`/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`, 'PUT', accessToken, {
+          values: [[newStatus]]
+        });
       }
-
-      // Row number is index + 2 (since headers are row 1 and indexes are 0-based)
-      const rowNum = index + 2;
-      const range = `${sheet1Name}!I${rowNum}`;
-
-      await sheetsApiRequest(`/values/${encodeURIComponent(range)}?valueInputOption=USER_ENTERED`, 'PUT', accessToken, {
-        values: [[newStatus]]
-      });
     } catch (error) {
-      console.error('Error updating order status in sheet:', error);
-      throw error;
+      console.error('Error updating order status in sheet via REST API:', error);
     }
   }
+
+  // 2. Notify Apps Script of status change so it updates the sheet and emails the customer
+  await postStatusUpdateToAppsScript(orderId, newStatus, customerEmail, customerName);
 }
 
 // Update dish in Sheet (for Admin panel or testing)

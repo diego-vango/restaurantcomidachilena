@@ -146,11 +146,11 @@ export default function AdminPanel({
 
                   <div className="flex flex-col sm:items-end gap-2 justify-between">
                     <span className={`px-2.5 py-1 rounded-full font-bold text-[9px] uppercase tracking-wider text-center ${
-                      order.status === 'Retiro en tienda' ? 'bg-amber-50 text-amber-700 border border-amber-100' :
-                      order.status === 'Pedido en preparación' || order.status === 'En Cocina' ? 'bg-blue-50 text-blue-700 border border-blue-100' :
-                      order.status === 'Pedido listo para retiro' ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' :
-                      order.status === 'Pedido en reparto' || order.status === 'En Camino' ? 'bg-purple-50 text-purple-700 border border-purple-100' :
-                      order.status === 'Entregado' ? 'bg-red-50 text-red-700 border border-red-100' :
+                      order.status === 'Pedido en preparación' ? 'bg-amber-100 text-amber-900 border border-amber-200' :
+                      order.status === 'Pedido en reparto' ? 'bg-amber-800 text-amber-50 border border-amber-900' :
+                      order.status === 'Pedido listo para retiro' ? 'bg-emerald-800 text-emerald-50 border border-emerald-900' :
+                      order.status === 'Entregado' ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' :
+                      order.status === 'Cancelado' ? 'bg-red-800 text-red-50 border border-red-900' :
                       'bg-slate-100 text-slate-500'
                     }`}>
                       {order.status}
@@ -168,7 +168,6 @@ export default function AdminPanel({
                           onChange={(e) => handleStatusChange(order.id, e.target.value as OrderStatus)}
                           className="w-full bg-white border border-slate-200 rounded-full py-1.5 px-3 text-[11px] font-bold text-slate-700 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 transition-all shadow-xs cursor-pointer"
                         >
-                          <option value="Retiro en tienda">Retiro en tienda</option>
                           <option value="Pedido en preparación">Pedido en preparación</option>
                           <option value="Pedido listo para retiro">Pedido listo para retiro</option>
                           <option value="Pedido en reparto">Pedido en reparto</option>

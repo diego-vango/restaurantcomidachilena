@@ -222,7 +222,7 @@ export default function App() {
       if (activeOrder) {
         const matchingLiveOrder = fetchedOrders.find(o => o.id === activeOrder.id);
         if (matchingLiveOrder) {
-          const prevStatus = previousStatusRef.current[activeOrder.id] || 'Recibido';
+          const prevStatus = previousStatusRef.current[activeOrder.id] || 'Pedido en preparación';
           const newStatus = matchingLiveOrder.status;
 
           if (newStatus !== prevStatus) {
@@ -230,13 +230,11 @@ export default function App() {
             
             // Format status message beautifully
             let statusText = '';
-            if (newStatus === 'Retiro en tienda') {
-              statusText = '🛍️ Tu pedido ha sido registrado para retiro en tienda y se encuentra en preparación.';
-            } else if (newStatus === 'Pedido en preparación' || newStatus === 'En Cocina') {
+            if (newStatus === 'Pedido en preparación') {
               statusText = '👨‍🍳 Tu pedido se encuentra en preparación en nuestra cocina.';
             } else if (newStatus === 'Pedido listo para retiro') {
               statusText = '🛍️ ¡Tu pedido está listo para retiro en nuestro local!';
-            } else if (newStatus === 'Pedido en reparto' || newStatus === 'En Camino') {
+            } else if (newStatus === 'Pedido en reparto') {
               statusText = '🛵 ¡Tu pedido va en reparto hacia tu dirección!';
             } else if (newStatus === 'Entregado') {
               statusText = '🎉 ¡Entregado! Esperamos que disfrutes del sabor tradicional de El Copihue de Oro.';
@@ -587,46 +585,6 @@ export default function App() {
                 )}
               </div>
 
-              {/* Special highlight box */}
-              {(() => {
-                const offerDish: Dish = dishes.find(
-                  (d) => d.id === 'mote-con-huesillo' || d.name.toLowerCase().includes('mote')
-                ) || {
-                  id: 'mote-con-huesillo',
-                  name: 'Mote con Huesillo XL',
-                  category: 'Postres',
-                  price: 3200,
-                  description: 'Refrescante postre típico para acompañar tu orden tradicional.',
-                  ingredients: ['Huesillos (duraznos deshidratados)', 'Mote de trigo', 'Chancaca o azúcar'],
-                  image: 'https://images.unsplash.com/photo-1553530666-ba11a7da3888?w=600&auto=format&fit=crop&q=80',
-                  available: true
-                };
-
-                return (
-                  <div className="p-5 bg-gradient-to-r from-red-600 to-red-700 rounded-3xl text-white shadow-lg shadow-red-100/55 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                    <div>
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[9px] uppercase tracking-widest bg-white/20 px-2.5 py-0.5 rounded-full font-bold">
-                          Oferta del Día
-                        </span>
-                        <span className="text-xs font-extrabold text-amber-300 bg-amber-950/30 px-2 py-0.5 rounded-full border border-amber-300/30">
-                          {formatCLP(offerDish.price)}
-                        </span>
-                      </div>
-                      <h4 className="text-base font-bold">{offerDish.name}</h4>
-                      <p className="text-xs opacity-90 mt-0.5">{offerDish.description}</p>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => handleAddToCart(offerDish)}
-                      className="px-4 py-2.5 bg-white hover:bg-amber-50 active:scale-95 text-red-600 font-extrabold text-xs rounded-full shadow-md transition-all flex items-center gap-1.5 shrink-0 cursor-pointer"
-                    >
-                      <Plus className="w-4 h-4 text-red-600 stroke-[3]" />
-                      <span>Añadir ({formatCLP(offerDish.price)})</span>
-                    </button>
-                  </div>
-                );
-              })()}
             </div>
 
             {/* Right Column: Tracking / Checkout */}

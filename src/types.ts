@@ -15,14 +15,10 @@ export interface Dish {
 }
 
 export type OrderStatus =
-  | 'Retiro en tienda'
   | 'Pedido en preparación'
   | 'Pedido listo para retiro'
   | 'Pedido en reparto'
   | 'Entregado'
-  | 'Recibido'
-  | 'En Cocina'
-  | 'En Camino'
   | 'Cancelado';
 
 export interface Order {
