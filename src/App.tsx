@@ -65,7 +65,7 @@ const isKitchenOpen = (): boolean => {
     return totalMinutes >= 660 && totalMinutes < 1260;
   } catch (e) {
     const localHour = new Date().getHours();
-    return localHour >= 11 && localHour < 23;
+    return localHour >= 11 && localHour < 21;
   }
 };
 
