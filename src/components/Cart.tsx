@@ -127,7 +127,7 @@ export default function Cart({
     setFormError('');
 
     if (!isKitchenOpen) {
-      setFormError('Lo sentimos, la cocina está cerrada en este momento (Horario: 11:00 a 21:00 Chile).');
+      setFormError('Lo sentimos, la cocina está cerrada en este momento (Horario: 11:00 a 23:00 Chile).');
       return;
     }
 
@@ -385,7 +385,7 @@ export default function Cart({
 
             {!isKitchenOpen && (
               <div className="p-3 bg-red-50 border border-red-200 text-red-800 text-xs font-semibold rounded-2xl text-center">
-                🚫 Cocina Cerrada en este momento.<br/>El horario de pedidos es de 11:00 a 21:00 (Hora de Chile).
+                🚫 Cocina Cerrada en este momento.<br/>El horario de pedidos es de 11:00 a 23:00 (Hora de Chile).
               </div>
             )}
 
@@ -405,7 +405,7 @@ export default function Cart({
                 </>
               ) : !isKitchenOpen ? (
                 <>
-                  Cocina Cerrada (11:00 a 21:00)
+                  Cocina Cerrada (11:00 a 23:00)
                 </>
               ) : isOutOfRange ? (
                 <>

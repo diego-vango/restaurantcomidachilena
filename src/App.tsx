@@ -61,11 +61,11 @@ const isKitchenOpen = (): boolean => {
     const hour = parseInt(hourStr, 10);
     const minute = parseInt(minuteStr, 10);
     const totalMinutes = hour * 60 + minute;
-    // 11:00 is 11 * 60 = 660. 21:00 is 21 * 60 = 1260.
-    return totalMinutes >= 660 && totalMinutes < 1260;
+    // 11:00 is 11 * 60 = 660. 23:00 is 23 * 60 = 1380.
+    return totalMinutes >= 660 && totalMinutes < 1380;
   } catch (e) {
     const localHour = new Date().getHours();
-    return localHour >= 11 && localHour < 21;
+    return localHour >= 11 && localHour < 23;
   }
 };
 
@@ -302,7 +302,7 @@ export default function App() {
     if (!isKitchenOpenState) {
       triggerNotification(
         'Cocina Cerrada',
-        'Lo sentimos, la cocina está cerrada en este momento (Horario: 11:00 a 21:00 Chile).',
+        'Lo sentimos, la cocina está cerrada en este momento (Horario: 11:00 a 23:00 Chile).',
         'warning'
       );
       return;
@@ -346,7 +346,7 @@ export default function App() {
     deliveryType?: 'delivery' | 'pickup';
   }) => {
     if (!isKitchenOpenState) {
-      throw new Error('La cocina está cerrada en este momento (Horario: 11:00 a 21:00 Chile).');
+      throw new Error('La cocina está cerrada en este momento (Horario: 11:00 a 23:00 Chile).');
     }
     const activeToken = token || '';
     const activeSheetName = sheet1Name || 'Ordenes';
@@ -800,7 +800,7 @@ export default function App() {
                 <div>
                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Horario de Atención</span>
                   <span className="font-semibold text-slate-800">
-                    Lun - Dom: 11:00 - 21:00 hrs
+                    Lun - Dom: 11:00 - 23:00 hrs
                   </span>
                 </div>
               </div>
