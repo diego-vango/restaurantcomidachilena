@@ -262,6 +262,22 @@ async function ensureSheetHeaders(accessToken: string, sheet1Name: string, sheet
   }
 }
 
+export function parseChileanPrice(val: any): number {
+  if (typeof val === 'number') return val;
+  if (!val) return 0;
+  const str = String(val).trim();
+  let clean = str.replace(/[^\d.,-]/g, '');
+  if (clean.includes('.') && !clean.includes(',')) {
+    const parts = clean.split('.');
+    if (parts.length > 1 && parts[parts.length - 1].length === 3) {
+      clean = clean.replace(/\./g, '');
+    }
+  } else if (clean.includes(',')) {
+    clean = clean.replace(/\./g, '').replace(',', '.');
+  }
+  return parseFloat(clean) || 0;
+}
+
 export function extractImageUrl(rawImageCell: any): string {
   if (!rawImageCell) return '';
   let str = String(rawImageCell).trim();
@@ -269,7 +285,7 @@ export function extractImageUrl(rawImageCell: any): string {
   // Strip leading/trailing double or single quotes
   str = str.replace(/^["']|["']$/g, '').trim();
 
-  // Handle Google Sheets formulas like =IMAGE("https://...") or =IMAGEN("https://...")
+  // Handle Google Sheets formulas like =IMAGE("https://...") or =IMAGEN("https://...") or =HYPERLINK("https://...", "...")
   if (str.startsWith('=')) {
     const urlMatch = str.match(/https?:\/\/[^\s"',\)]+/);
     if (urlMatch) {
@@ -278,9 +294,6 @@ export function extractImageUrl(rawImageCell: any): string {
   }
 
   // Handle Google Drive links
-  // https://drive.google.com/file/d/1abc.../view
-  // https://drive.google.com/uc?id=1abc...
-  // https://drive.google.com/open?id=1abc...
   const driveIdMatch = str.match(/(?:file\/d\/|id=|open\?id=)([a-zA-Z0-9_-]{25,})/);
   if (driveIdMatch && driveIdMatch[1]) {
     return `https://lh3.googleusercontent.com/d/${driveIdMatch[1]}`;
@@ -358,7 +371,7 @@ export async function postOrderToAppsScript(order: Order): Promise<boolean> {
 
 // Fetch dishes publicly via Google Sheets GViz endpoint with cache buster
 export async function fetchDishesFromSheetPublic(sheetName: string = 'Multimedia'): Promise<Dish[]> {
-  const possibleSheetNames = [sheetName, 'Multimedia', 'Hoja2', 'Carta', 'Hoja 2'];
+  const possibleSheetNames = Array.from(new Set([sheetName, 'Multimedia', 'Hoja2', 'Carta', 'Hoja 2', 'Platos', 'Dishes']));
 
   for (const name of possibleSheetNames) {
     try {
@@ -391,7 +404,8 @@ export async function fetchDishesFromSheetPublic(sheetName: string = 'Multimedia
         if (id.toLowerCase() === 'id' || nameVal.toLowerCase() === 'nombre') continue;
 
         const category = c[2]?.v ? String(c[2].v).trim() : 'Platos Principales';
-        const price = typeof c[3]?.v === 'number' ? c[3].v : (parseFloat(String(c[3]?.v || 0).replace(/[^\d.-]/g, '')) || 0);
+        const rawPriceVal = c[3]?.v ?? c[3]?.f;
+        const price = parseChileanPrice(rawPriceVal);
         const description = c[4]?.v ? String(c[4].v).trim() : '';
         const ingredientsStr = c[5]?.v ? String(c[5].v).trim() : '';
         const ingredients = ingredientsStr ? ingredientsStr.split(',').map((i: string) => i.trim()).filter(Boolean) : [];

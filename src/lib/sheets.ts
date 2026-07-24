@@ -11,6 +11,7 @@ import {
   DEFAULT_DISHES,
   initializeSpreadsheet as directInitializeSpreadsheet,
   fetchDishesFromSheet as directFetchDishesFromSheet,
+  fetchDishesFromSheetPublic,
   createOrderInSheet as directCreateOrderInSheet,
   fetchOrdersFromSheet as directFetchOrdersFromSheet,
   updateOrderStatusInSheet as directUpdateOrderStatusInSheet,
@@ -86,11 +87,21 @@ export async function fetchDishesFromSheet(accessToken: string, sheet2Name: stri
       const dishes = await directFetchDishesFromSheet(accessToken, sheet2Name);
       if (dishes && dishes.length > 0) return dishes;
     } catch (e) {
-      console.warn('Direct fetchDishesFromSheet failed, trying server endpoint:', e);
+      console.warn('Direct fetchDishesFromSheet failed, trying public GViz:', e);
     }
   }
 
-  // 2. Server API fallback
+  // 2. Try public GViz directly from browser (live sync from Multimedia sheet)
+  try {
+    const publicDishes = await fetchDishesFromSheetPublic(sheet2Name);
+    if (publicDishes && publicDishes.length > 0) {
+      return publicDishes;
+    }
+  } catch (e) {
+    console.warn('Public GViz fetch failed, trying server endpoint:', e);
+  }
+
+  // 3. Server API fallback
   try {
     const data = await apiRequest('/dishes', 'GET');
     if (data && Array.isArray(data.dishes) && data.dishes.length > 0) {
