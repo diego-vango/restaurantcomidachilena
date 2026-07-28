@@ -12,6 +12,7 @@ export interface Dish {
   ingredients: string[];
   image: string;
   available: boolean;
+  stock?: number; 
 }
 
 export type OrderStatus =
