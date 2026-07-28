@@ -241,7 +241,7 @@ async function ensureSheetHeaders(accessToken: string, sheet1Name: string, sheet
         values: headers
       });
 
-      // Seed Hoja2 with initial traditional Chilean dishes
+      // Seed Hoja2 with initial traditional Chilean dishes with initial Stock = 20
       const dishValues = DEFAULT_DISHES.map(d => [
         d.id,
         d.name,
@@ -250,7 +250,7 @@ async function ensureSheetHeaders(accessToken: string, sheet1Name: string, sheet
         d.description,
         d.ingredients.join(', '),
         d.image,
-        d.available ? 'Si' : 'No'
+        d.stock !== undefined ? d.stock : (d.available ? 20 : 0)
       ]);
 
       await sheetsApiRequest(`/values/${encodeURIComponent(sheet2Name)}!A2:H${DEFAULT_DISHES.length + 1}?valueInputOption=USER_ENTERED`, 'PUT', accessToken, {
@@ -285,6 +285,7 @@ export function parseStockAndAvailability(rawVal: any): { stock?: number; availa
   const str = String(rawVal).trim();
   const cleanStr = str.toLowerCase();
 
+  // Try parsing as number
   const num = parseFloat(str.replace(/[^0-9.-]/g, ''));
   if (!isNaN(num) && str.match(/\d+/)) {
     return { stock: num, available: num > 0 };
@@ -467,8 +468,9 @@ export async function fetchDishesFromSheet(accessToken: string, sheet2Name: stri
           const ingredients = row[5] ? row[5].split(',').map((i: string) => i.trim()).filter(Boolean) : [];
           const image = extractImageUrl(row[6]);
           const { stock, available } = parseStockAndAvailability(row[7]);
-          
+
           return { id, name, category, price, description, ingredients, image, available, stock };
+        }).filter((d: Dish) => d.id && d.name);
       }
     } catch (error) {
       console.warn('Error fetching dishes via REST API token, falling back to public GViz:', error);
@@ -667,7 +669,7 @@ export async function updateDishInSheet(
       newDish.description,
       newDish.ingredients.join(', '),
       newDish.image,
-      newDish.available ? 'Si' : 'No'
+      newDish.stock !== undefined ? newDish.stock : (newDish.available ? 10 : 0)
     ];
 
     const range = `${sheet2Name}!A${rowNum}:H${rowNum}`;
