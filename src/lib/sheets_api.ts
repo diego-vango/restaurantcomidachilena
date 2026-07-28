@@ -278,6 +278,25 @@ export function parseChileanPrice(val: any): number {
   return parseFloat(clean) || 0;
 }
 
+export function parseStockAndAvailability(rawVal: any): { stock?: number; available: boolean } {
+  if (rawVal == null || rawVal === '') {
+    return { stock: 10, available: true };
+  }
+  const str = String(rawVal).trim();
+  const cleanStr = str.toLowerCase();
+
+  const num = parseFloat(str.replace(/[^0-9.-]/g, ''));
+  if (!isNaN(num) && str.match(/\d+/)) {
+    return { stock: num, available: num > 0 };
+  }
+
+  if (cleanStr === 'no' || cleanStr === 'false' || cleanStr === '0' || cleanStr === 'agotado') {
+    return { stock: 0, available: false };
+  }
+
+  return { stock: 10, available: true };
+}
+
 export function extractImageUrl(rawImageCell: any): string {
   if (!rawImageCell) return '';
   let str = String(rawImageCell).trim();
@@ -415,11 +434,10 @@ export async function fetchDishesFromSheetPublic(sheetName: string = 'Multimedia
         const rawImg = c[6]?.f || c[6]?.v || (typeof c[6] === 'string' ? c[6] : '');
         const image = extractImageUrl(rawImg);
 
-        const rawAvail = c[7]?.v != null ? String(c[7].v) : (c[7]?.f != null ? String(c[7].f) : '');
-        const availableVal = rawAvail ? rawAvail.toLowerCase().trim() : 'si';
-        const available = availableVal !== 'no' && availableVal !== 'false';
+        const rawAvail = c[7]?.v != null ? c[7].v : (c[7]?.f != null ? c[7].f : '');
+        const { stock, available } = parseStockAndAvailability(rawAvail);
 
-        dishes.push({ id, name: nameVal, category, price, description, ingredients, image, available });
+        dishes.push({ id, name: nameVal, category, price, description, ingredients, image, available, stock });
       }
 
       if (dishes.length > 0) {
@@ -448,10 +466,9 @@ export async function fetchDishesFromSheet(accessToken: string, sheet2Name: stri
           const description = row[4] || '';
           const ingredients = row[5] ? row[5].split(',').map((i: string) => i.trim()).filter(Boolean) : [];
           const image = extractImageUrl(row[6]);
-          const available = row[7] ? row[7].toLowerCase().trim() === 'si' : true;
-
-          return { id, name, category, price, description, ingredients, image, available };
-        }).filter((d: Dish) => d.id && d.name);
+          const { stock, available } = parseStockAndAvailability(row[7]);
+          
+          return { id, name, category, price, description, ingredients, image, available, stock };
       }
     } catch (error) {
       console.warn('Error fetching dishes via REST API token, falling back to public GViz:', error);
