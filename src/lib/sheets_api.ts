@@ -235,7 +235,7 @@ async function ensureSheetHeaders(accessToken: string, sheet1Name: string, sheet
     const sheet2Data = await sheetsApiRequest(`/values/${encodeURIComponent(sheet2Name)}!A1:H1`, 'GET', accessToken);
     if (!sheet2Data.values || sheet2Data.values.length === 0) {
       const headers = [
-        ['ID', 'Nombre', 'Categoría', 'Precio ($)', 'Descripción', 'Ingredientes', 'Imagen (URL)', 'Disponible']
+        ['ID', 'Nombre', 'Categoría', 'Precio ($)', 'Descripción', 'Ingredientes', 'Imagen (URL)', 'Stock']
       ];
       await sheetsApiRequest(`/values/${encodeURIComponent(sheet2Name)}!A1:H1?valueInputOption=USER_ENTERED`, 'PUT', accessToken, {
         values: headers
